@@ -81,6 +81,23 @@ RTL_STYLES = """
 [data-testid="stSlider"] {
     direction: ltr;
 }
+
+/* نوار کناری جمع‌شده در چیدمان راست‌به‌چپ
+   Streamlit نوار کناری را با translateX برای چیدمان چپ‌به‌راست بیرون می‌برد؛
+   وقتی نوار در سمت راست است، این جابه‌جایی آن را داخل کادر دید رها می‌کند و
+   نوار باریک متن به‌هم‌ریخته و دستگیره تغییر اندازه وسط صفحه می‌مانند.
+   به‌جای visibility از opacity استفاده می‌شود، چون برخی ویجت‌های داخلی
+   Streamlit دوباره visibility: visible می‌گیرند. */
+[data-testid="stSidebar"][data-collapsed="true"] {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* فلش‌های باز و بستن نوار کناری در چیدمان راست‌به‌چپ آینه شوند */
+[data-testid="stSidebarCollapseButton"] [data-testid="stIconMaterial"],
+[data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"] {
+    transform: scaleX(-1);
+}
 </style>
 """
 
