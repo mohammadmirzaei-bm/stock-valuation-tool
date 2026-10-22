@@ -1,0 +1,67 @@
+# تم روشن مالی — رنگ‌های آرام، کنتراست بالا و فونت فارسی وزیرمتن
+[theme]
+base = "light"
+primaryColor = "#1D4ED8"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F1F5F9"
+textColor = "#0F172A"
+linkColor = "#1D4ED8"
+borderColor = "#E2E8F0"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+linkUnderline = false
+
+# تایپوگرافی فارسی — بارگذاری وزیرمتن از Google Fonts
+font = "'Vazirmatn':https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap"
+headingFont = "'Vazirmatn':https://fonts.googleapis.com/css2?family=Vazirmatn:wght@500;600;700&display=swap"
+baseFontSize = 15
+baseFontWeight = 400
+headingFontSizes = ["30px", "24px", "20px", "17px", "15px", "13px"]
+headingFontWeights = [700, 600, 600, 600, 500, 500]
+
+# رنگ‌های معنایی برای شاخص‌های مالی
+greenColor = "#15803D"
+redColor = "#B91C1C"
+yellowColor = "#A16207"
+orangeColor = "#C2410C"
+blueColor = "#1D4ED8"
+violetColor = "#6D28D9"
+grayColor = "#64748B"
+
+# رنگ نمودارها — پالت متمایز برای داده‌های مالی
+chartCategoricalColors = [
+    "#1D4ED8",
+    "#0D9488",
+    "#7C3AED",
+    "#DC2626",
+    "#D97706",
+    "#0284C7",
+    "#64748B",
+    "#C2410C",
+]
+
+chartSequentialColors = [
+    "#EFF6FF",
+    "#DBEAFE",
+    "#BFDBFE",
+    "#93C5FD",
+    "#60A5FA",
+    "#3B82F6",
+    "#2563EB",
+    "#1D4ED8",
+    "#1E40AF",
+    "#1E3A8A",
+]
+
+# جدول داده
+dataframeBorderColor = "#E2E8F0"
+dataframeHeaderBackgroundColor = "#F1F5F9"
+
+[theme.sidebar]
+backgroundColor = "#F8FAFC"
+secondaryBackgroundColor = "#F1F5F9"
+textColor = "#0F172A"
+borderColor = "#E2E8F0"
+primaryColor = "#1D4ED8"
