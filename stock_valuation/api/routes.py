@@ -191,3 +191,50 @@ def peg(payload: s.PegRequest) -> s.PegResult:
         growth_rate_percent=payload.growth_rate_percent,
         interpretation=s.PegInterpretation.model_validate(models.interpret_peg(value)),
     )
+
+
+@router.post(
+    "/wacc",
+    response_model=s.WaccResult,
+    summary="میانگین موزون هزینه سرمایه (WACC)",
+)
+def weighted_average_cost_of_capital(payload: s.WaccRequest) -> s.WaccResult:
+    """محاسبه WACC: `(E/V)×rₑ + (D/V)×r_d×(1 − t)`."""
+    breakdown = models.wacc_breakdown(
+        payload.equity,
+        payload.debt,
+        payload.cost_of_equity,
+        payload.cost_of_debt,
+        payload.tax_rate,
+    )
+    return s.WaccResult.model_validate(breakdown, from_attributes=True)
+
+
+@router.post(
+    "/dcf",
+    response_model=s.DcfResult,
+    summary="ارزش‌گذاری با جریان نقدی تنزیل‌شده (DCF / FCFF)",
+)
+def dcf(payload: s.DcfRequest) -> s.DcfResult:
+    """تنزیل FCFF و ارزش انتهای دوره گوردون؛ پل EV به ارزش هر سهم."""
+    projections = [
+        models.CashFlowProjection(
+            ebit=row.ebit,
+            depreciation=row.depreciation,
+            capex=row.capex,
+            delta_nwc=row.delta_nwc,
+        )
+        for row in payload.projections
+    ]
+    breakdown = models.dcf_valuation(
+        projections,
+        payload.wacc,
+        payload.terminal_growth,
+        payload.shares_outstanding,
+        payload.tax_rate,
+        cash=payload.cash,
+        debt=payload.debt,
+        minority_interest=payload.minority_interest,
+        preferred_equity=payload.preferred_equity,
+    )
+    return s.DcfResult.model_validate(breakdown, from_attributes=True)
