@@ -1,0 +1,46 @@
+# محیط‌های مجازی
+.venv/
+venv/
+env/
+
+# کش پایتون و بایت‌کد (الگوهای بدون **/ فقط در ریشه اثر دارند)
+**/__pycache__/
+**/*.py[cod]
+
+# کنترل نسخه
+.git/
+.gitignore
+
+# تنظیمات، نقطه ورود و لایه نمایش Streamlit — تصویر فقط بک‌اند است
+.streamlit/
+stock_cla_developed.py
+stock_valuation/ui/
+
+# فرانت‌اند React
+frontend/
+node_modules/
+
+# آرتیفکت‌های تست و پوشش کد
+tests/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+**/*.log
+
+# خروجی‌های بیلد و بسته‌بندی
+build/
+dist/
+**/*.egg-info/
+
+# ابزارهای محلی و مستندات
+.qoder/
+.agents/
+README.md
+Achievements.md
+
+# فایل‌های خود داکر
+Dockerfile
+.dockerignore

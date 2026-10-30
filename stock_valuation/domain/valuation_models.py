@@ -430,6 +430,7 @@ def project_dividends(d0: float, g: float, periods: int) -> List[float]:
 
     Raises:
         ValidationError: در صورت ورودی نامعتبر
+        CalculationError: در صورت سرریز عددی یا نتیجه غیرعددی
     """
     validate_positive_number(d0, "سود تقسیمی فعلی")
     validate_percentage(g, "نرخ رشد")
@@ -437,7 +438,16 @@ def project_dividends(d0: float, g: float, periods: int) -> List[float]:
     if periods <= 0:
         raise ValidationError("تعداد دوره‌های پیش‌بینی باید حداقل ۱ باشد")
 
-    return [d0 * math.pow(1 + g, period) for period in range(1, periods + 1)]
+    try:
+        dividends = [d0 * math.pow(1 + g, period) for period in range(1, periods + 1)]
+    except OverflowError as e:
+        logger.error(f"خطا در پیش‌بینی سود تقسیمی: {e}")
+        raise CalculationError(f"خطا در محاسبه: {str(e)}")
+
+    if not all(math.isfinite(value) for value in dividends):
+        raise CalculationError("نتیجه محاسبه نامعتبر است")
+
+    return dividends
 
 
 def supernormal_growth_model(d0: float, growth_rates: List[float], years: int,
