@@ -24,11 +24,16 @@
 | سهام ممتاز | `P = D / r` | `preferred_stock_valuation` |
 | فرصت‌های رشد | `P = EPS/r + NPVGO` | `growth_opportunities_valuation` |
 | نسبت PEG | `PEG = (P/E) / g` | `peg_ratio` |
+| WACC | `WACC = (E/V)rₑ + (D/V)r_d(1−t)` | `wacc` |
+| DCF (FCFF) | `EV = Σ FCFFₜ/(1+WACC)ᵗ + TV/(1+WACC)ⁿ` | `dcf_valuation` |
 
 برای هر مدل، توابع تجزیه (`single_period_decomposition`، `gordon_breakdown`،
 `expected_return_breakdown`، `capm_breakdown`، `growth_opportunities_breakdown`،
-`supernormal_schedule`) اجزای ارزش و بازده را برمی‌گردانند تا لایه نمایش
-هیچ محاسبه‌ای انجام ندهد.
+`supernormal_schedule`، `wacc_breakdown`) اجزای ارزش و بازده را برمی‌گردانند تا
+لایه نمایش هیچ محاسبه‌ای انجام ندهد.
+
+> رابط Streamlit برای مدل‌های WACC و DCF هنوز پیاده‌سازی نشده و خارج از محدودهٔ
+> این تغییر است؛ فقط لایه دامنه و endpointهای FastAPI در دسترس‌اند.
 
 ## ساختار پروژه
 
@@ -43,7 +48,7 @@ stock-env/
 │   │   └── self_tests.py         # تست‌های دودی قابل اجرا از داخل برنامه
 │   ├── api/                      # سرویس FastAPI
 │   │   ├── main.py               # اپ، CORS، GET /health، ثبت exception handler
-│   │   ├── routes.py             # ۱۲ endpoint زیر /api/valuation
+│   │   ├── routes.py             # ۱۴ endpoint زیر /api/valuation
 │   │   ├── schemas.py            # مدل‌های Pydantic درخواست و پاسخ
 │   │   └── errors.py             # ترجمه خطاهای دامنه به HTTP 400
 │   └── ui/                       # لایه نمایش Streamlit — فقط ویجت، رندر و نمودار
@@ -112,6 +117,8 @@ streamlit run stock_cla_developed.py
 | POST | `/api/valuation/risk-premium` | `risk_premium_percent` |
 | POST | `/api/valuation/growth-opportunities` | `growth_opportunities_breakdown` |
 | POST | `/api/valuation/peg` | `peg_ratio` + `interpret_peg` |
+| POST | `/api/valuation/wacc` | `wacc_breakdown` |
+| POST | `/api/valuation/dcf` | `dcf_valuation` |
 | GET | `/health` | بررسی دسترس‌پذیری سرویس |
 
 ### قرارداد داده
@@ -227,14 +234,15 @@ python3 -m unittest tests.test_valuation_models -v
 python3 -m pytest tests -v
 ```
 
-مجموعه تست شامل ۵۷ تست است: مقادیر مرجع مدل‌ها، سازگاری ارزش فعلی اجزا با
-قیمت کل، حداقل اختلاف نرخ بازده و رشد، ورودی‌های خالی یا ناهم‌خوان، آستانه‌های
-تفسیر PEG، قطعی‌بودن خروجی‌ها و بررسی نبود وابستگی لایه محاسباتی به Streamlit.
+مجموعه تست شامل ۹۴ تست است: مقادیر مرجع مدل‌ها (شامل WACC و DCF)، سازگاری
+ارزش فعلی اجزا با قیمت کل، حداقل اختلاف نرخ بازده/WACC و رشد، ورودی‌های خالی
+یا ناهم‌خوان، آستانه‌های تفسیر PEG، قطعی‌بودن خروجی‌ها و بررسی نبود وابستگی
+لایه محاسباتی به Streamlit.
 
 در خود برنامه نیز دکمه «اجرای تست‌های سیستم» در نوار کناری، تست‌های دودی
 (`self_tests.run_self_tests`) را اجرا و نتیجه را نمایش می‌دهد.
 
-لایه API در حال حاضر تست خودکار ندارد؛ صحت هر ۱۲ endpoint، قرارداد خطا و
+لایه API در حال حاضر تست خودکار ندارد؛ صحت هر ۱۴ endpoint، قرارداد خطا و
 پاسخ 422 با فراخوانی واقعی HTTP بررسی شده است.
 
 ## افزودن مدل جدید
