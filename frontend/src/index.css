@@ -1,0 +1,87 @@
+/* استایل پایه — آینه ساختاری ui/theme.py و تایپوگرافی .streamlit/config.toml */
+
+/* فونت فارسی وزیرمتن از همان منبع Google Fonts که تم Streamlit بارگذاری می‌کرد.
+   @import باید پیش از @tailwind بماند. */
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* رنگ‌های پایه رابط (config.toml [theme]) */
+  --color-primary: #1d4ed8;
+  --color-canvas: #ffffff;
+  --color-surface: #f1f5f9;
+  --color-panel: #f8fafc;
+  --color-ink: #0f172a;
+  --color-border: #e2e8f0;
+
+  /* رنگ‌های معنایی شاخص‌های مالی */
+  --color-positive: #15803d;
+  --color-negative: #b91c1c;
+  --color-caution: #a16207;
+  --color-warning: #c2410c;
+  --color-accent: #6d28d9;
+  --color-muted: #64748b;
+
+  /* رنگ‌های نمودار (ui/charts.py) */
+  --chart-bar: rgba(55, 128, 191, 0.7);
+  --chart-bar-stroke: rgba(55, 128, 191, 1);
+  --chart-bar-alt: rgba(255, 193, 7, 0.7);
+  --chart-line: #0000ff;
+  --chart-benchmark: #add8e6;
+  --chart-marker: #ff0000;
+
+  /* شعاع گوشه‌ها: baseRadius و buttonRadius */
+  --radius-base: 8px;
+}
+
+@layer base {
+  /* جهت سراسری راست‌به‌چپ */
+  html {
+    direction: rtl;
+  }
+
+  body {
+    direction: rtl;
+    text-align: right;
+    font-family: "Vazirmatn", Tahoma, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  /* سلسله‌مراتب سرصفحه‌ها (headingFontSizes / headingFontWeights) */
+  h1 { font-size: 30px; font-weight: 700; }
+  h2 { font-size: 24px; font-weight: 600; }
+  h3 { font-size: 20px; font-weight: 600; }
+  h4 { font-size: 17px; font-weight: 600; }
+  h5 { font-size: 15px; font-weight: 500; }
+  h6 { font-size: 13px; font-weight: 500; }
+
+  /* ورودی‌های متنی و عددی راست‌چین */
+  input,
+  textarea,
+  select {
+    text-align: right;
+  }
+
+  /* فرمول‌های ریاضی و جدول داده در جهت طبیعی خود بمانند */
+  .katex,
+  table[data-direction="ltr"] {
+    direction: ltr;
+    text-align: left;
+  }
+}
+
+@layer utilities {
+  .ltr {
+    direction: ltr;
+  }
+
+  .rtl {
+    direction: rtl;
+  }
+}

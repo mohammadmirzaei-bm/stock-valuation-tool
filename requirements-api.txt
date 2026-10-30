@@ -1,0 +1,5 @@
+# وابستگی‌های بک‌اند FastAPI — فقط همین سه بسته برای اجرای سرویس لازم است.
+# نسخه کامل وابستگی‌های اپ Streamlit در requirements.txt باقی می‌ماند.
+fastapi
+pydantic
+uvicorn
