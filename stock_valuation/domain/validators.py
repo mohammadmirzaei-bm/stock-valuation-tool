@@ -52,6 +52,26 @@ _WACC_SPREAD_TOLERANCE = 1e-12
 # و حل دستگاه رد می‌شود. مقدار مطلق است (نسبت به مقیاس ماتریس نرمال نمی‌شود).
 LINEAR_PIVOT_TOLERANCE = 1e-12
 
+# تعداد دارایی‌های یک سبد
+MIN_ASSETS = 2
+MAX_ASSETS = 30
+# سقف شمارش دقیق تکیه‌گاه وقتی فروش استقراضی مجاز نیست
+MAX_LONG_ONLY_ASSETS = 8
+
+# حداقل تعداد مشاهده قیمت برای هر دارایی. بازده ساده یکی کمتر است و
+# کوواریانس نمونه‌ای با ddof زیر حداقل به دو بازده نیاز دارد.
+MIN_OBSERVATIONS = 3
+SAMPLE_COVARIANCE_DDOF = 1
+
+# تعداد دوره‌ها در سال برای سال‌سازی خطی (روزانه، با سال کبیسه، تا ۳۶۶)
+MIN_PERIODS_PER_YEAR = 1
+MAX_PERIODS_PER_YEAR = 366
+
+# تلورانس مطلق تقارن کوواریانس و عبور همبستگی از ۱.
+# هیچ‌کدام نسبت به مقیاس ماتریس نرمال نمی‌شوند.
+COVARIANCE_SYMMETRY_TOLERANCE = 1e-8
+CORRELATION_TOLERANCE = 1e-8
+
 
 def validate_positive_number(value: float, field_name: str) -> None:
     """
@@ -414,3 +434,123 @@ def validate_football_range_set(
                 f"❌ در بازه «{label}» باید کرانه پایین ≤ مقدار میانی ≤ "
                 f"کرانه بالا باشد!"
             )
+
+
+def validate_asset_count(count: int) -> None:
+    """
+    اعتبارسنجی تعداد دارایی‌های سبد
+
+    Args:
+        count (int): تعداد دارایی‌ها؛ bool پذیرفته نمی‌شود
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه مجاز باشد
+    """
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise ValidationError("❌ تعداد دارایی‌ها باید عدد صحیح باشد!")
+    if not MIN_ASSETS <= count <= MAX_ASSETS:
+        raise ValidationError(
+            f"❌ تعداد دارایی‌ها باید بین {MIN_ASSETS} و {MAX_ASSETS} باشد!"
+        )
+
+
+def validate_asset_names(names: List[str]) -> None:
+    """
+    اعتبارسنجی نام دارایی‌ها: غیرخالی و یکتا
+
+    تعداد نام‌ها همان تعداد دارایی‌هاست. یکتایی پس از حذف فاصله‌های ابتدا
+    و انتها سنجیده می‌شود. این تابع نام‌ها را تغییر نمی‌دهد.
+
+    Args:
+        names (List[str]): نام دارایی‌ها به ترتیب ستون‌های بازده و کوواریانس
+
+    Raises:
+        ValidationError: اگر تعداد، نوع، خالی بودن یا تکرار نام‌ها نامعتبر باشد
+    """
+    if not isinstance(names, (list, tuple)):
+        raise ValidationError("❌ نام دارایی‌ها باید فهرست باشد!")
+    validate_asset_count(len(names))
+    if any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValidationError("❌ نام دارایی باید غیرخالی باشد!")
+    if len({name.strip() for name in names}) != len(names):
+        raise ValidationError("❌ نام دارایی‌ها باید یکتا باشد!")
+
+
+def validate_periods_per_year(periods_per_year: int) -> None:
+    """
+    اعتبارسنجی تعداد دوره‌ها در سال برای سال‌سازی خطی آماره‌ها
+
+    مقدار باید عدد صحیح (نه bool و نه اعشاری) در بازه ۱ تا ۳۶۶ باشد.
+
+    Args:
+        periods_per_year (int): تعداد دوره‌های بازده در یک سال
+
+    Raises:
+        ValidationError: اگر نوع یا مقدار خارج از بازه باشد
+    """
+    if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, int):
+        raise ValidationError("❌ تعداد دوره‌ها در سال باید عدد صحیح باشد!")
+    if not MIN_PERIODS_PER_YEAR <= periods_per_year <= MAX_PERIODS_PER_YEAR:
+        raise ValidationError(
+            f"❌ تعداد دوره‌ها در سال باید بین {MIN_PERIODS_PER_YEAR} و "
+            f"{MAX_PERIODS_PER_YEAR} باشد!"
+        )
+
+
+def validate_covariance_matrix(covariance: List[List[float]]) -> None:
+    """
+    اعتبارسنجی ماتریس کوواریانس مربعی
+
+    درایه‌ها باید عدد متناهی باشند. قدر مطلق اختلاف هر زوج برون‌قطری از
+    ``COVARIANCE_SYMMETRY_TOLERANCE`` (مطلق، بدون نرمال‌سازی نسبت به مقیاس)
+    بیشتر نباشد. قطر باید نامنفی باشد. اگر قطری صفر باشد، کوواریانس همان
+    سطر و ستون هم باید در محدوده همان تلورانس صفر باشد. اگر هر دو واریانس
+    مثبت باشند، قدر مطلق همبستگی ضمنی نباید از ``1 + CORRELATION_TOLERANCE``
+    بیشتر شود. ورودی تغییر نمی‌کند.
+
+    Args:
+        covariance (List[List[float]]): ماتریس کوواریانس به ترتیب دارایی‌ها
+
+    Raises:
+        ValidationError: اگر شکل، تقارن، قطر یا همبستگی ضمنی نامعتبر باشد
+    """
+    if not isinstance(covariance, (list, tuple)) or len(covariance) == 0:
+        raise ValidationError("❌ ماتریس کوواریانس باید غیرخالی باشد!")
+    size = len(covariance)
+    validate_asset_count(size)
+    rows: List[List[float]] = []
+    for row_index, row in enumerate(covariance):
+        if not isinstance(row, (list, tuple)) or len(row) != size:
+            raise ValidationError("❌ ماتریس کوواریانس باید مربعی باشد!")
+        copied: List[float] = []
+        for column_index, value in enumerate(row):
+            label = f"درایه ({row_index}, {column_index}) کوواریانس"
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValidationError(f"❌ {label} باید عدد باشد!")
+            if not math.isfinite(value):
+                raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+            copied.append(float(value))
+        rows.append(copied)
+
+    for row_index in range(size):
+        if rows[row_index][row_index] < 0:
+            raise ValidationError("❌ واریانس (قطر کوواریانس) باید نامنفی باشد!")
+        for column_index in range(row_index + 1, size):
+            left = rows[row_index][column_index]
+            right = rows[column_index][row_index]
+            if abs(left - right) > COVARIANCE_SYMMETRY_TOLERANCE:
+                raise ValidationError("❌ ماتریس کوواریانس باید متقارن باشد!")
+            pair = (left + right) / 2.0
+            variance_left = rows[row_index][row_index]
+            variance_right = rows[column_index][column_index]
+            if variance_left > 0 and variance_right > 0:
+                correlation = pair / math.sqrt(variance_left * variance_right)
+                if (not math.isfinite(correlation)
+                        or abs(correlation) > 1.0 + CORRELATION_TOLERANCE):
+                    raise ValidationError(
+                        "❌ قدر مطلق همبستگی ضمنی باید حداکثر 1 باشد!"
+                    )
+            elif abs(pair) > COVARIANCE_SYMMETRY_TOLERANCE:
+                raise ValidationError(
+                    "❌ با واریانس صفر، کوواریانس برون‌قطری باید صفر باشد!"
+                )
