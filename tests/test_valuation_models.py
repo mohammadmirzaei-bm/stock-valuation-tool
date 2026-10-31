@@ -16,6 +16,7 @@ from dataclasses import FrozenInstanceError, replace
 from unittest.mock import patch
 
 from stock_valuation.domain import errors, self_tests, validators, valuation_models
+from stock_valuation.domain import equity
 from stock_valuation.domain.errors import CalculationError, ValidationError
 from stock_valuation.domain.valuation_models import (
     CashFlowProjection,
@@ -425,7 +426,7 @@ class TestSustainableGrowth(unittest.TestCase):
 
     def test_breakdown_consistency_guard(self):
         real = growth_opportunities_breakdown(5.0, 0.12, 50.0 - 5.0 / 0.12)
-        with patch.object(valuation_models, "growth_opportunities_breakdown",
+        with patch.object(equity, "growth_opportunities_breakdown",
                           return_value=replace(real, total_value=51.0)):
             with self.assertRaises(CalculationError):
                 self._result()

@@ -230,3 +230,9 @@ def validate_retention_ratio(b: float) -> None:
     """نسبت نگهداری سود باید متناهی و در بازهٔ ۰ ≤ b < ۱ باشد."""
     if not math.isfinite(b) or not 0 <= b < 1:
         raise ValidationError("❌ نسبت نگهداری سود باید متناهی و بین 0 و 1 (غیرشامل) باشد!")
+
+
+def require_finite_number(value: float, field_name: str) -> None:
+    """ورودی باید عدد متناهی باشد؛ در غیر این صورت ValidationError."""
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
