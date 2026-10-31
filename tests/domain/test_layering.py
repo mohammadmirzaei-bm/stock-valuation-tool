@@ -33,7 +33,15 @@ class TestLayering(unittest.TestCase):
     LOGIC_MODULES = _discover_logic_modules()
 
     # بسته‌هایی که import کردنشان در لایه دامنه ممنوع است
-    FORBIDDEN_PACKAGES = ("streamlit", "fastapi", "pydantic")
+    FORBIDDEN_PACKAGES = (
+        "streamlit",
+        "fastapi",
+        "pydantic",
+        "pandas",
+        "numpy",
+        "openpyxl",
+        "yfinance",
+    )
 
     @staticmethod
     def _imports(module) -> set:
