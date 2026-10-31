@@ -47,6 +47,54 @@ MAX_FOOTBALL_RANGES = 12
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
 
+# حداقل قدر مطلق محور مجاز در حذف گاوسی با محورگیری جزئی.
+# محوری که قدر مطلقش از این مقدار کمتر باشد، ماتریس را منفرد یا بدشرط می‌کند
+# و حل دستگاه رد می‌شود. مقدار مطلق است (نسبت به مقیاس ماتریس نرمال نمی‌شود).
+LINEAR_PIVOT_TOLERANCE = 1e-12
+
+# تعداد دارایی‌های یک سبد
+MIN_ASSETS = 2
+MAX_ASSETS = 30
+# سقف شمارش دقیق تکیه‌گاه وقتی فروش استقراضی مجاز نیست
+MAX_LONG_ONLY_ASSETS = 8
+
+# حداقل تعداد مشاهده قیمت برای هر دارایی. بازده ساده یکی کمتر است و
+# کوواریانس نمونه‌ای با ddof زیر حداقل به دو بازده نیاز دارد.
+MIN_OBSERVATIONS = 3
+SAMPLE_COVARIANCE_DDOF = 1
+
+# تعداد دوره‌ها در سال برای سال‌سازی خطی (روزانه، با سال کبیسه، تا ۳۶۶)
+MIN_PERIODS_PER_YEAR = 1
+MAX_PERIODS_PER_YEAR = 366
+
+# تلورانس مطلق تقارن کوواریانس و عبور همبستگی از ۱.
+# هیچ‌کدام نسبت به مقیاس ماتریس نرمال نمی‌شوند.
+COVARIANCE_SYMMETRY_TOLERANCE = 1e-8
+CORRELATION_TOLERANCE = 1e-8
+
+# بازه مجاز تعداد نقاط مرز کارا و مقدار پیش‌فرض آن
+MIN_FRONTIER_POINTS = 5
+MAX_FRONTIER_POINTS = 200
+DEFAULT_FRONTIER_POINTS = 50
+
+# کران حداکثر اهرم سبد کامل (y*) و مقدار پیش‌فرض پارامتر
+MIN_LEVERAGE = 0.0
+MAX_LEVERAGE = 3.0
+DEFAULT_MAX_LEVERAGE = 1.0
+
+# نقطه دوم خط تخصیص سرمایه در این مضرب از نوسان سبد مماس قرار می‌گیرد
+# (مضرب ۲ یعنی سبد مماس دقیقاً وسط دو نقطه کمکی است).
+CAL_VOLATILITY_MULTIPLIER = 2.0
+
+# تلورانس مطلق مجموع وزن‌ها در ورودی سبد (|Σw − 1| ≤ مقدار)
+WEIGHT_SUM_TOLERANCE = 1e-6
+# کمترین وزن منفی که در حالت فقط‌خرید خطای گرد کردن حساب و به صفر بریده می‌شود
+LONG_ONLY_WEIGHT_TOLERANCE = 1e-12
+# تلورانس مطلق برابری بازده‌ها: هدف مرز کارا با بازده تکیه‌گاه، و فشردگی بازه مرز
+RETURN_MATCH_TOLERANCE = 1e-9
+# واریانس منفی‌تر از این مقدار خطای محاسباتی است؛ منفی کوچک‌تر به صفر بریده می‌شود
+VARIANCE_NEGATIVE_TOLERANCE = 1e-12
+
 
 def validate_positive_number(value: float, field_name: str) -> None:
     """
@@ -409,3 +457,244 @@ def validate_football_range_set(
                 f"❌ در بازه «{label}» باید کرانه پایین ≤ مقدار میانی ≤ "
                 f"کرانه بالا باشد!"
             )
+
+
+def validate_asset_count(count: int) -> None:
+    """
+    اعتبارسنجی تعداد دارایی‌های سبد
+
+    Args:
+        count (int): تعداد دارایی‌ها؛ bool پذیرفته نمی‌شود
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه مجاز باشد
+    """
+    if isinstance(count, bool) or not isinstance(count, int):
+        raise ValidationError("❌ تعداد دارایی‌ها باید عدد صحیح باشد!")
+    if not MIN_ASSETS <= count <= MAX_ASSETS:
+        raise ValidationError(
+            f"❌ تعداد دارایی‌ها باید بین {MIN_ASSETS} و {MAX_ASSETS} باشد!"
+        )
+
+
+def validate_asset_names(names: List[str]) -> None:
+    """
+    اعتبارسنجی نام دارایی‌ها: غیرخالی و یکتا
+
+    تعداد نام‌ها همان تعداد دارایی‌هاست. یکتایی پس از حذف فاصله‌های ابتدا
+    و انتها سنجیده می‌شود. این تابع نام‌ها را تغییر نمی‌دهد.
+
+    Args:
+        names (List[str]): نام دارایی‌ها به ترتیب ستون‌های بازده و کوواریانس
+
+    Raises:
+        ValidationError: اگر تعداد، نوع، خالی بودن یا تکرار نام‌ها نامعتبر باشد
+    """
+    if not isinstance(names, (list, tuple)):
+        raise ValidationError("❌ نام دارایی‌ها باید فهرست باشد!")
+    validate_asset_count(len(names))
+    if any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValidationError("❌ نام دارایی باید غیرخالی باشد!")
+    if len({name.strip() for name in names}) != len(names):
+        raise ValidationError("❌ نام دارایی‌ها باید یکتا باشد!")
+
+
+def validate_periods_per_year(periods_per_year: int) -> None:
+    """
+    اعتبارسنجی تعداد دوره‌ها در سال برای سال‌سازی خطی آماره‌ها
+
+    مقدار باید عدد صحیح (نه bool و نه اعشاری) در بازه ۱ تا ۳۶۶ باشد.
+
+    Args:
+        periods_per_year (int): تعداد دوره‌های بازده در یک سال
+
+    Raises:
+        ValidationError: اگر نوع یا مقدار خارج از بازه باشد
+    """
+    if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, int):
+        raise ValidationError("❌ تعداد دوره‌ها در سال باید عدد صحیح باشد!")
+    if not MIN_PERIODS_PER_YEAR <= periods_per_year <= MAX_PERIODS_PER_YEAR:
+        raise ValidationError(
+            f"❌ تعداد دوره‌ها در سال باید بین {MIN_PERIODS_PER_YEAR} و "
+            f"{MAX_PERIODS_PER_YEAR} باشد!"
+        )
+
+
+def validate_covariance_matrix(covariance: List[List[float]]) -> None:
+    """
+    اعتبارسنجی ماتریس کوواریانس مربعی
+
+    درایه‌ها باید عدد متناهی باشند. قدر مطلق اختلاف هر زوج برون‌قطری از
+    ``COVARIANCE_SYMMETRY_TOLERANCE`` (مطلق، بدون نرمال‌سازی نسبت به مقیاس)
+    بیشتر نباشد. قطر باید نامنفی باشد. اگر قطری صفر باشد، کوواریانس همان
+    سطر و ستون هم باید در محدوده همان تلورانس صفر باشد. اگر هر دو واریانس
+    مثبت باشند، قدر مطلق همبستگی ضمنی نباید از ``1 + CORRELATION_TOLERANCE``
+    بیشتر شود. ورودی تغییر نمی‌کند.
+
+    Args:
+        covariance (List[List[float]]): ماتریس کوواریانس به ترتیب دارایی‌ها
+
+    Raises:
+        ValidationError: اگر شکل، تقارن، قطر یا همبستگی ضمنی نامعتبر باشد
+    """
+    if not isinstance(covariance, (list, tuple)) or len(covariance) == 0:
+        raise ValidationError("❌ ماتریس کوواریانس باید غیرخالی باشد!")
+    size = len(covariance)
+    validate_asset_count(size)
+    rows: List[List[float]] = []
+    for row_index, row in enumerate(covariance):
+        if not isinstance(row, (list, tuple)) or len(row) != size:
+            raise ValidationError("❌ ماتریس کوواریانس باید مربعی باشد!")
+        copied: List[float] = []
+        for column_index, value in enumerate(row):
+            label = f"درایه ({row_index}, {column_index}) کوواریانس"
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValidationError(f"❌ {label} باید عدد باشد!")
+            if not math.isfinite(value):
+                raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+            copied.append(float(value))
+        rows.append(copied)
+
+    for row_index in range(size):
+        if rows[row_index][row_index] < 0:
+            raise ValidationError("❌ واریانس (قطر کوواریانس) باید نامنفی باشد!")
+        for column_index in range(row_index + 1, size):
+            left = rows[row_index][column_index]
+            right = rows[column_index][row_index]
+            if abs(left - right) > COVARIANCE_SYMMETRY_TOLERANCE:
+                raise ValidationError("❌ ماتریس کوواریانس باید متقارن باشد!")
+            pair = (left + right) / 2.0
+            variance_left = rows[row_index][row_index]
+            variance_right = rows[column_index][column_index]
+            if variance_left > 0 and variance_right > 0:
+                correlation = pair / math.sqrt(variance_left * variance_right)
+                if (not math.isfinite(correlation)
+                        or abs(correlation) > 1.0 + CORRELATION_TOLERANCE):
+                    raise ValidationError(
+                        "❌ قدر مطلق همبستگی ضمنی باید حداکثر 1 باشد!"
+                    )
+            elif abs(pair) > COVARIANCE_SYMMETRY_TOLERANCE:
+                raise ValidationError(
+                    "❌ با واریانس صفر، کوواریانس برون‌قطری باید صفر باشد!"
+                )
+
+
+def validate_mean_returns(mean_returns: List[float]) -> None:
+    """
+    اعتبارسنجی بردار بازده مورد انتظار دارایی‌ها
+
+    Args:
+        mean_returns (List[float]): بازده سالانه اعشاری هر دارایی؛ منفی مجاز است
+
+    Raises:
+        ValidationError: اگر تعداد، نوع یا متناهی بودن مقادیر نامعتبر باشد
+    """
+    if not isinstance(mean_returns, (list, tuple)):
+        raise ValidationError("❌ بازده‌های مورد انتظار باید فهرست باشند!")
+    validate_asset_count(len(mean_returns))
+    for index, value in enumerate(mean_returns):
+        label = f"بازده مورد انتظار دارایی {index + 1}"
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValidationError(f"❌ {label} باید عدد باشد!")
+        if not math.isfinite(value):
+            raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+
+
+def validate_risk_free_rate(risk_free_rate: float) -> None:
+    """
+    اعتبارسنجی نرخ بدون ریسک: عدد متناهی و نامنفی (اعشاری)
+
+    Args:
+        risk_free_rate (float): نرخ بدون ریسک سالانه
+
+    Raises:
+        ValidationError: اگر عدد متناهی نباشد یا منفی باشد
+    """
+    if isinstance(risk_free_rate, bool) or not isinstance(risk_free_rate, (int, float)):
+        raise ValidationError("❌ نرخ بدون ریسک باید عدد باشد!")
+    if not math.isfinite(risk_free_rate):
+        raise ValidationError("❌ نرخ بدون ریسک باید عدد متناهی باشد!")
+    if risk_free_rate < 0:
+        raise ValidationError("❌ نرخ بدون ریسک باید نامنفی باشد!")
+
+
+def validate_frontier_points(points: int) -> None:
+    """
+    اعتبارسنجی تعداد نقاط مرز کارا (``MIN_FRONTIER_POINTS`` تا ``MAX_FRONTIER_POINTS``)
+
+    Args:
+        points (int): تعداد نقاط؛ bool و اعشاری رد می‌شود
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه باشد
+    """
+    if isinstance(points, bool) or not isinstance(points, int):
+        raise ValidationError("❌ تعداد نقاط مرز کارا باید عدد صحیح باشد!")
+    if not MIN_FRONTIER_POINTS <= points <= MAX_FRONTIER_POINTS:
+        raise ValidationError(
+            f"❌ تعداد نقاط مرز کارا باید بین {MIN_FRONTIER_POINTS} و "
+            f"{MAX_FRONTIER_POINTS} باشد!"
+        )
+
+
+def validate_weights(weights: List[float], count: int) -> None:
+    """
+    اعتبارسنجی وزن‌های سبد: متناهی، هم‌طول با دارایی‌ها و با مجموع ۱
+
+    مجموع وزن‌ها تا ``WEIGHT_SUM_TOLERANCE`` (مطلق) از ۱ فاصله مجاز دارد.
+    وزن منفی (فروش استقراضی) اینجا رد نمی‌شود.
+
+    Args:
+        weights (List[float]): وزن هر دارایی
+        count (int): تعداد دارایی‌ها
+
+    Raises:
+        ValidationError: اگر طول، نوع، متناهی بودن یا مجموع وزن‌ها نامعتبر باشد
+    """
+    if not isinstance(weights, (list, tuple)) or len(weights) != count:
+        raise ValidationError("❌ تعداد وزن‌ها باید برابر تعداد دارایی‌ها باشد!")
+    for index, value in enumerate(weights):
+        label = f"وزن دارایی {index + 1}"
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValidationError(f"❌ {label} باید عدد باشد!")
+        if not math.isfinite(value):
+            raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+    total = sum(weights)
+    if abs(total - 1.0) > WEIGHT_SUM_TOLERANCE:
+        raise ValidationError(f"❌ مجموع وزن‌ها ({total}) باید برابر 1 باشد!")
+
+
+def validate_risk_aversion(risk_aversion: float) -> None:
+    """
+    اعتبارسنجی ریسک‌گریزی A در سبد کامل: عدد متناهی و اکیداً مثبت
+
+    Args:
+        risk_aversion (float): ضریب ریسک‌گریزی؛ کران بالا ندارد
+
+    Raises:
+        ValidationError: اگر عدد نباشد، نامتناهی باشد یا مثبت نباشد
+    """
+    if isinstance(risk_aversion, bool) or not isinstance(risk_aversion, (int, float)):
+        raise ValidationError("❌ ریسک‌گریزی باید عدد باشد!")
+    if not math.isfinite(risk_aversion) or risk_aversion <= 0:
+        raise ValidationError("❌ ریسک‌گریزی باید عدد متناهی و مثبت باشد!")
+
+
+def validate_max_leverage(max_leverage: float) -> None:
+    """
+    اعتبارسنجی سقف اهرم y* در سبد کامل
+
+    مقدار باید متناهی و در بازه ``MIN_LEVERAGE`` تا ``MAX_LEVERAGE`` (۰ تا ۳) باشد.
+
+    Args:
+        max_leverage (float): بیشترین وزن مجاز سبد مماس در سبد کامل
+
+    Raises:
+        ValidationError: اگر عدد نباشد یا خارج از بازه باشد
+    """
+    if isinstance(max_leverage, bool) or not isinstance(max_leverage, (int, float)):
+        raise ValidationError("❌ حداکثر اهرم باید عدد باشد!")
+    if not math.isfinite(max_leverage) or not MIN_LEVERAGE <= max_leverage <= MAX_LEVERAGE:
+        raise ValidationError(
+            f"❌ حداکثر اهرم باید بین {MIN_LEVERAGE} و {MAX_LEVERAGE} باشد!"
+        )
