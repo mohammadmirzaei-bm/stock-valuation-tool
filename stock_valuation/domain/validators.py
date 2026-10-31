@@ -77,6 +77,15 @@ MIN_FRONTIER_POINTS = 5
 MAX_FRONTIER_POINTS = 200
 DEFAULT_FRONTIER_POINTS = 50
 
+# کران حداکثر اهرم سبد کامل (y*) و مقدار پیش‌فرض پارامتر
+MIN_LEVERAGE = 0.0
+MAX_LEVERAGE = 3.0
+DEFAULT_MAX_LEVERAGE = 1.0
+
+# نقطه دوم خط تخصیص سرمایه در این مضرب از نوسان سبد مماس قرار می‌گیرد
+# (مضرب ۲ یعنی سبد مماس دقیقاً وسط دو نقطه کمکی است).
+CAL_VOLATILITY_MULTIPLIER = 2.0
+
 # تلورانس مطلق مجموع وزن‌ها در ورودی سبد (|Σw − 1| ≤ مقدار)
 WEIGHT_SUM_TOLERANCE = 1e-6
 # کمترین وزن منفی که در حالت فقط‌خرید خطای گرد کردن حساب و به صفر بریده می‌شود
@@ -653,3 +662,39 @@ def validate_weights(weights: List[float], count: int) -> None:
     total = sum(weights)
     if abs(total - 1.0) > WEIGHT_SUM_TOLERANCE:
         raise ValidationError(f"❌ مجموع وزن‌ها ({total}) باید برابر 1 باشد!")
+
+
+def validate_risk_aversion(risk_aversion: float) -> None:
+    """
+    اعتبارسنجی ریسک‌گریزی A در سبد کامل: عدد متناهی و اکیداً مثبت
+
+    Args:
+        risk_aversion (float): ضریب ریسک‌گریزی؛ کران بالا ندارد
+
+    Raises:
+        ValidationError: اگر عدد نباشد، نامتناهی باشد یا مثبت نباشد
+    """
+    if isinstance(risk_aversion, bool) or not isinstance(risk_aversion, (int, float)):
+        raise ValidationError("❌ ریسک‌گریزی باید عدد باشد!")
+    if not math.isfinite(risk_aversion) or risk_aversion <= 0:
+        raise ValidationError("❌ ریسک‌گریزی باید عدد متناهی و مثبت باشد!")
+
+
+def validate_max_leverage(max_leverage: float) -> None:
+    """
+    اعتبارسنجی سقف اهرم y* در سبد کامل
+
+    مقدار باید متناهی و در بازه ``MIN_LEVERAGE`` تا ``MAX_LEVERAGE`` (۰ تا ۳) باشد.
+
+    Args:
+        max_leverage (float): بیشترین وزن مجاز سبد مماس در سبد کامل
+
+    Raises:
+        ValidationError: اگر عدد نباشد یا خارج از بازه باشد
+    """
+    if isinstance(max_leverage, bool) or not isinstance(max_leverage, (int, float)):
+        raise ValidationError("❌ حداکثر اهرم باید عدد باشد!")
+    if not math.isfinite(max_leverage) or not MIN_LEVERAGE <= max_leverage <= MAX_LEVERAGE:
+        raise ValidationError(
+            f"❌ حداکثر اهرم باید بین {MIN_LEVERAGE} و {MAX_LEVERAGE} باشد!"
+        )
