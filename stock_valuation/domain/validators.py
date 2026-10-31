@@ -72,6 +72,20 @@ MAX_PERIODS_PER_YEAR = 366
 COVARIANCE_SYMMETRY_TOLERANCE = 1e-8
 CORRELATION_TOLERANCE = 1e-8
 
+# بازه مجاز تعداد نقاط مرز کارا و مقدار پیش‌فرض آن
+MIN_FRONTIER_POINTS = 5
+MAX_FRONTIER_POINTS = 200
+DEFAULT_FRONTIER_POINTS = 50
+
+# تلورانس مطلق مجموع وزن‌ها در ورودی سبد (|Σw − 1| ≤ مقدار)
+WEIGHT_SUM_TOLERANCE = 1e-6
+# کمترین وزن منفی که در حالت فقط‌خرید خطای گرد کردن حساب و به صفر بریده می‌شود
+LONG_ONLY_WEIGHT_TOLERANCE = 1e-12
+# تلورانس مطلق برابری بازده‌ها: هدف مرز کارا با بازده تکیه‌گاه، و فشردگی بازه مرز
+RETURN_MATCH_TOLERANCE = 1e-9
+# واریانس منفی‌تر از این مقدار خطای محاسباتی است؛ منفی کوچک‌تر به صفر بریده می‌شود
+VARIANCE_NEGATIVE_TOLERANCE = 1e-12
+
 
 def validate_positive_number(value: float, field_name: str) -> None:
     """
@@ -554,3 +568,88 @@ def validate_covariance_matrix(covariance: List[List[float]]) -> None:
                 raise ValidationError(
                     "❌ با واریانس صفر، کوواریانس برون‌قطری باید صفر باشد!"
                 )
+
+
+def validate_mean_returns(mean_returns: List[float]) -> None:
+    """
+    اعتبارسنجی بردار بازده مورد انتظار دارایی‌ها
+
+    Args:
+        mean_returns (List[float]): بازده سالانه اعشاری هر دارایی؛ منفی مجاز است
+
+    Raises:
+        ValidationError: اگر تعداد، نوع یا متناهی بودن مقادیر نامعتبر باشد
+    """
+    if not isinstance(mean_returns, (list, tuple)):
+        raise ValidationError("❌ بازده‌های مورد انتظار باید فهرست باشند!")
+    validate_asset_count(len(mean_returns))
+    for index, value in enumerate(mean_returns):
+        label = f"بازده مورد انتظار دارایی {index + 1}"
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValidationError(f"❌ {label} باید عدد باشد!")
+        if not math.isfinite(value):
+            raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+
+
+def validate_risk_free_rate(risk_free_rate: float) -> None:
+    """
+    اعتبارسنجی نرخ بدون ریسک: عدد متناهی و نامنفی (اعشاری)
+
+    Args:
+        risk_free_rate (float): نرخ بدون ریسک سالانه
+
+    Raises:
+        ValidationError: اگر عدد متناهی نباشد یا منفی باشد
+    """
+    if isinstance(risk_free_rate, bool) or not isinstance(risk_free_rate, (int, float)):
+        raise ValidationError("❌ نرخ بدون ریسک باید عدد باشد!")
+    if not math.isfinite(risk_free_rate):
+        raise ValidationError("❌ نرخ بدون ریسک باید عدد متناهی باشد!")
+    if risk_free_rate < 0:
+        raise ValidationError("❌ نرخ بدون ریسک باید نامنفی باشد!")
+
+
+def validate_frontier_points(points: int) -> None:
+    """
+    اعتبارسنجی تعداد نقاط مرز کارا (``MIN_FRONTIER_POINTS`` تا ``MAX_FRONTIER_POINTS``)
+
+    Args:
+        points (int): تعداد نقاط؛ bool و اعشاری رد می‌شود
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه باشد
+    """
+    if isinstance(points, bool) or not isinstance(points, int):
+        raise ValidationError("❌ تعداد نقاط مرز کارا باید عدد صحیح باشد!")
+    if not MIN_FRONTIER_POINTS <= points <= MAX_FRONTIER_POINTS:
+        raise ValidationError(
+            f"❌ تعداد نقاط مرز کارا باید بین {MIN_FRONTIER_POINTS} و "
+            f"{MAX_FRONTIER_POINTS} باشد!"
+        )
+
+
+def validate_weights(weights: List[float], count: int) -> None:
+    """
+    اعتبارسنجی وزن‌های سبد: متناهی، هم‌طول با دارایی‌ها و با مجموع ۱
+
+    مجموع وزن‌ها تا ``WEIGHT_SUM_TOLERANCE`` (مطلق) از ۱ فاصله مجاز دارد.
+    وزن منفی (فروش استقراضی) اینجا رد نمی‌شود.
+
+    Args:
+        weights (List[float]): وزن هر دارایی
+        count (int): تعداد دارایی‌ها
+
+    Raises:
+        ValidationError: اگر طول، نوع، متناهی بودن یا مجموع وزن‌ها نامعتبر باشد
+    """
+    if not isinstance(weights, (list, tuple)) or len(weights) != count:
+        raise ValidationError("❌ تعداد وزن‌ها باید برابر تعداد دارایی‌ها باشد!")
+    for index, value in enumerate(weights):
+        label = f"وزن دارایی {index + 1}"
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValidationError(f"❌ {label} باید عدد باشد!")
+        if not math.isfinite(value):
+            raise ValidationError(f"❌ {label} باید عدد متناهی باشد!")
+    total = sum(weights)
+    if abs(total - 1.0) > WEIGHT_SUM_TOLERANCE:
+        raise ValidationError(f"❌ مجموع وزن‌ها ({total}) باید برابر 1 باشد!")
