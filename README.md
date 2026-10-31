@@ -420,6 +420,10 @@ docker run -p 8000:8000 stock-valuation-api
 - `.dockerignore` محیط‌های مجازی، کش پایتون، `.git`، `.streamlit`،
   `stock_valuation/ui/`، `frontend/` و `tests/` را از بستر بیلد حذف می‌کند.
 - سرویس روی `0.0.0.0:8000` گوش می‌دهد.
+- کانتینر با کاربر غیر ریشه `appuser` (uid `10001`) اجرا می‌شود و
+  `PYTHONUNBUFFERED=1` لاگ‌ها را بی‌درنگ در `docker logs` نشان می‌دهد.
+- `HEALTHCHECK` هر ۳۰ ثانیه `GET /health` را با `urllib` صدا می‌زند (تصویر
+  `slim` ابزار `curl` ندارد)؛ وضعیت در ستون `STATUS` خروجی `docker ps` دیده می‌شود.
 
 ## فرانت‌اند React
 
