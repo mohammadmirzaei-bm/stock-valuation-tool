@@ -37,6 +37,9 @@ MAX_REVENUE_GROWTH = 2.0  # حداکثر ۲۰۰٪ رشد سالانه؛ همان
 # حداکثر نسبت‌های درصدی محرک‌های پیش‌بینی (نسبت به درآمد یا درآمد افزایشی)
 MAX_FORECAST_PERCENT = 1.0  # حداکثر ۱۰۰٪ از درآمد
 
+# حداقل تعداد همتایان معتبر با ضریب مثبت برای گزارش آماره‌های ارزش‌گذاری نسبی
+MIN_PEERS = 3
+
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
 
@@ -304,3 +307,47 @@ def require_finite_number(value: float, field_name: str) -> None:
     """ورودی باید عدد متناهی باشد؛ در غیر این صورت ValidationError."""
     if not math.isfinite(value):
         raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+
+
+def validate_peer_count(count: int) -> None:
+    """
+    اعتبارسنجی تعداد همتایان معتبر با ضریب مثبت
+
+    ضریب‌های غیرمثبت (مثل P/E شرکت زیان‌ده) از آماره‌ها کنار گذاشته
+    می‌شوند؛ اگر پس از حذف کمتر از ``MIN_PEERS`` همتا بماند، آماره‌ها
+    معنادار نیستند.
+
+    Args:
+        count (int): تعداد همتایان معتبر باقی‌مانده
+
+    Raises:
+        ValidationError: اگر تعداد کمتر از ``MIN_PEERS`` باشد
+    """
+    if count < MIN_PEERS:
+        raise ValidationError(
+            f"❌ حداقل {MIN_PEERS} همتای معتبر با ضریب مثبت لازم است!"
+        )
+
+
+def validate_valuation_metric(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی شاخص هدف ضریب‌های نسبی: عدد متناهی و مثبت
+
+    ضریب‌های قیمت/سود، قیمت/فروش و EV/EBITDA برای شاخص غیرمثبت (مثل سود
+    خالص منفی) معنای اقتصادی ندارند.
+
+    Args:
+        value (float): شاخص هدف (سود خالص، حقوق صاحبان سهام، درآمد، ...)
+        field_name (str): نام فیلد برای نمایش خطا
+
+    Raises:
+        ValidationError: اگر مقدار عدد نباشد، نامتناهی باشد یا مثبت نباشد
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValidationError(f"❌ {field_name} باید عدد باشد!")
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if value <= 0:
+        raise ValidationError(
+            f"❌ {field_name} باید مثبت باشد؛ ضریب‌ها برای مقدار غیرمثبت معنا ندارند!"
+        )
