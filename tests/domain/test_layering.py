@@ -39,6 +39,8 @@ class TestLayering(unittest.TestCase):
         "pydantic",
         "pandas",
         "numpy",
+        "scipy",
+        "plotly",
         "openpyxl",
         "yfinance",
     )
@@ -60,6 +62,14 @@ class TestLayering(unittest.TestCase):
         for expected in (cost_of_capital, dcf, dcf_analysis, equity):
             with self.subTest(module=expected.__name__):
                 self.assertIn(expected.__name__, discovered)
+        for name in (
+            "stock_valuation.domain._linalg",
+            "stock_valuation.domain.portfolio_stats",
+            "stock_valuation.domain.portfolio",
+            "stock_valuation.domain.portfolio_analysis",
+        ):
+            with self.subTest(module=name):
+                self.assertIn(name, discovered)
         for module in self.LOGIC_MODULES:
             imported = self._imports(module)
             for forbidden in self.FORBIDDEN_PACKAGES:
