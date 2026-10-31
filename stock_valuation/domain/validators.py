@@ -30,6 +30,13 @@ MAX_SCENARIOS = 5
 PROBABILITY_SUM_TOLERANCE = 1e-6
 RETENTION_CURVE_STEP = 0.1
 
+# کرانه‌های نرخ رشد درآمد در پیش‌بینی مبتنی بر محرک‌ها (اعشاری)
+MIN_REVENUE_GROWTH = -1.0  # انحصاری: رشد ≤ −۱۰۰٪ درآمد سال بعد را منفی می‌کند
+MAX_REVENUE_GROWTH = 2.0  # حداکثر ۲۰۰٪ رشد سالانه؛ همان سقف validate_percentage
+
+# حداکثر نسبت‌های درصدی محرک‌های پیش‌بینی (نسبت به درآمد یا درآمد افزایشی)
+MAX_FORECAST_PERCENT = 1.0  # حداکثر ۱۰۰٪ از درآمد
+
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
 
@@ -204,6 +211,67 @@ def validate_sensitivity_grid(wacc_step: float, growth_step: float,
                 f"❌ {field_name} باید بین {MIN_SENSITIVITY_POINTS} و "
                 f"{MAX_SENSITIVITY_POINTS} باشد!"
             )
+
+
+def validate_forecast_years(years: int) -> None:
+    """
+    اعتبارسنجی تعداد سال‌های پیش‌بینی مبتنی بر محرک‌ها (۱ تا MAX_PROJECTIONS)
+
+    Args:
+        years (int): تعداد سال‌ها؛ باید عدد صحیح باشد (bool رد می‌شود)
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه مجاز باشد
+    """
+    if isinstance(years, bool) or not isinstance(years, int):
+        raise ValidationError("❌ تعداد سال‌های پیش‌بینی باید عدد صحیح باشد!")
+    validate_projections_length(years)
+
+
+def validate_forecast_growth(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی نرخ رشد محرک‌های پیش‌بینی: متناهی و بیشتر از −۱۰۰٪
+
+    کرانه پایین انحصاری است (رشد ≤ −۱۰۰٪ درآمد سال بعد را صفر یا منفی
+    می‌کند) و کرانه بالا ``MAX_REVENUE_GROWTH`` (۲۰۰٪) است؛ همان سقف
+    مجاز درصدها در ``validate_percentage``.
+
+    Args:
+        value (float): نرخ رشد (اعشاری)
+        field_name (str): نام فیلد
+
+    Raises:
+        ValidationError: اگر نامتناهی یا خارج از بازه باشد
+    """
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if not MIN_REVENUE_GROWTH < value <= MAX_REVENUE_GROWTH:
+        raise ValidationError(
+            f"❌ {field_name} باید بیشتر از {MIN_REVENUE_GROWTH} "
+            f"و حداکثر {MAX_REVENUE_GROWTH} باشد!"
+        )
+
+
+def validate_forecast_percent(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی نسبت‌های درصدی محرک‌های پیش‌بینی: متناهی و ۰ تا ۱۰۰٪
+
+    حاشیه سود عملیاتی و نسبت‌های استهلاک، Capex و NWC نسبت به درآمد فرض
+    می‌شوند نامنفی و حداکثر برابر کل درآمد (۱۰۰٪) باشند.
+
+    Args:
+        value (float): نسبت درصدی (اعشاری)
+        field_name (str): نام فیلد
+
+    Raises:
+        ValidationError: اگر نامتناهی یا خارج از بازه ۰ تا ۱ باشد
+    """
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if not 0 <= value <= MAX_FORECAST_PERCENT:
+        raise ValidationError(
+            f"❌ {field_name} باید بین 0 و {MAX_FORECAST_PERCENT} باشد!"
+        )
 
 
 def validate_scenario_set(names: List[str], probabilities: List[float]) -> None:
