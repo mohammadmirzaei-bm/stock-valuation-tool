@@ -10,6 +10,7 @@ import math
 from dataclasses import dataclass
 from typing import List
 
+from .bridge import enterprise_to_equity
 from .errors import CalculationError, ValidationError
 from .validators import (
     require_finite_number,
@@ -267,10 +268,17 @@ def dcf_valuation(
         pv_terminal_value = terminal_value / math.pow(1 + wacc_rate, n)
         pv_fcff_total = sum(row.present_value for row in years)
         enterprise_value = pv_fcff_total + pv_terminal_value
-        equity_value = (
-            enterprise_value + cash - debt - minority_interest - preferred_equity
+        # تنها منبع حقیقت پل EV ← حقوق صاحبان سهام در domain.bridge است.
+        bridge = enterprise_to_equity(
+            enterprise_value,
+            cash,
+            debt,
+            minority_interest,
+            preferred_equity,
+            shares_outstanding,
         )
-        value_per_share = equity_value / shares_outstanding
+        equity_value = bridge.equity_value
+        value_per_share = bridge.value_per_share
         terminal_value_share_percent = (
             (pv_terminal_value / enterprise_value) * 100
             if enterprise_value != 0
