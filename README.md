@@ -23,17 +23,22 @@
 | بازده مورد انتظار (CAPM) | `r = rf + β(rm − rf)` | `capm_required_return` |
 | سهام ممتاز | `P = D / r` | `preferred_stock_valuation` |
 | فرصت‌های رشد | `P = EPS/r + NPVGO` | `growth_opportunities_valuation` |
+| رشد پایدار و NPVGO | `g = b × ROE`، `P = EPS₁(1−b)/(r−g)` | `sustainable_growth_valuation` |
 | نسبت PEG | `PEG = (P/E) / g` | `peg_ratio` |
 | WACC | `WACC = (E/V)rₑ + (D/V)r_d(1−t)` | `wacc` |
 | DCF (FCFF) | `EV = Σ FCFFₜ/(1+WACC)ᵗ + TV/(1+WACC)ⁿ` | `dcf_valuation` |
+| حساسیت DCF | ماتریس ارزش هر سهم و EV برای شبکه WACC × رشد پایانی | `dcf_sensitivity` |
+| DCF معکوس | رشد پایانی تلویحی قیمت بازار (نصف‌سازی بازه) | `reverse_dcf_implied_growth` |
+| سناریوهای وزنی DCF | `E[V] = Σ pᵢVᵢ` و انحراف معیار وزنی | `dcf_scenario_valuation` |
 
 برای هر مدل، توابع تجزیه (`single_period_decomposition`، `gordon_breakdown`،
 `expected_return_breakdown`، `capm_breakdown`، `growth_opportunities_breakdown`،
 `supernormal_schedule`، `wacc_breakdown`) اجزای ارزش و بازده را برمی‌گردانند تا
 لایه نمایش هیچ محاسبه‌ای انجام ندهد.
 
-> رابط Streamlit برای مدل‌های WACC و DCF هنوز پیاده‌سازی نشده و خارج از محدودهٔ
-> این تغییر است؛ فقط لایه دامنه و endpointهای FastAPI در دسترس‌اند.
+> رابط Streamlit برای مدل‌های WACC، DCF، حساسیت DCF، DCF معکوس،
+> سناریوهای وزنی DCF و رشد پایدار هنوز پیاده‌سازی نشده و خارج از محدودهٔ این تغییر است؛ فقط لایه دامنه و endpointهای
+> FastAPI در دسترس‌اند.
 
 ## ساختار پروژه
 
@@ -48,7 +53,7 @@ stock-env/
 │   │   └── self_tests.py         # تست‌های دودی قابل اجرا از داخل برنامه
 │   ├── api/                      # سرویس FastAPI
 │   │   ├── main.py               # اپ، CORS، GET /health، ثبت exception handler
-│   │   ├── routes.py             # ۱۴ endpoint زیر /api/valuation
+│   │   ├── routes.py             # ۱۸ endpoint زیر /api/valuation
 │   │   ├── schemas.py            # مدل‌های Pydantic درخواست و پاسخ
 │   │   └── errors.py             # ترجمه خطاهای دامنه به HTTP 400
 │   └── ui/                       # لایه نمایش Streamlit — فقط ویجت، رندر و نمودار
@@ -116,9 +121,13 @@ streamlit run stock_cla_developed.py
 | POST | `/api/valuation/preferred-stock` | `preferred_stock_valuation` |
 | POST | `/api/valuation/risk-premium` | `risk_premium_percent` |
 | POST | `/api/valuation/growth-opportunities` | `growth_opportunities_breakdown` |
+| POST | `/api/valuation/sustainable-growth` | `sustainable_growth_valuation` |
 | POST | `/api/valuation/peg` | `peg_ratio` + `interpret_peg` |
 | POST | `/api/valuation/wacc` | `wacc_breakdown` |
 | POST | `/api/valuation/dcf` | `dcf_valuation` |
+| POST | `/api/valuation/dcf-scenarios` | `dcf_scenario_valuation` |
+| POST | `/api/valuation/dcf-sensitivity` | `dcf_sensitivity` |
+| POST | `/api/valuation/reverse-dcf` | `reverse_dcf_implied_growth` |
 | GET | `/health` | بررسی دسترس‌پذیری سرویس |
 
 ### قرارداد داده
@@ -130,6 +139,246 @@ streamlit run stock_cla_developed.py
   نرخ رشد در `peg` (`growth_rate_percent`) و نرخ اوراق قرضه در `risk-premium`
   (`bond_rate_percent`) که هر دو درصدی‌اند.
 - فیلدهای `*_percent` در پاسخ آماده نمایش‌اند تا فرانت‌اند محاسبه‌ای تکرار نکند.
+
+### ماتریس حساسیت DCF (WACC × رشد پایانی)
+
+ارزش هر سهم و ارزش بنگاه را برای شبکه‌ای از ترکیب‌های WACC و رشد پایانی
+برمی‌گرداند. هر سلول با همان `dcf_valuation` محاسبه می‌شود؛ محورها صعودی و
+مرکزچین روی حالت پایه‌اند، پس حالت پایه دقیقاً سلول (`base_row`, `base_col`) است.
+گام‌ها و تعداد نقاط (فرد، بین ۳ تا ۱۱) در دامنه اعتبارسنجی می‌شوند.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/valuation/dcf-sensitivity \
+  -H "Content-Type: application/json" -d @sensitivity.json
+```
+
+```json
+{
+  "projections": [
+    {"ebit": 1000, "depreciation": 200, "capex": 250, "delta_nwc": 50},
+    {"ebit": 1100, "depreciation": 210, "capex": 260, "delta_nwc": 55},
+    {"ebit": 1200, "depreciation": 220, "capex": 270, "delta_nwc": 60},
+    {"ebit": 1300, "depreciation": 230, "capex": 280, "delta_nwc": 65},
+    {"ebit": 1400, "depreciation": 240, "capex": 290, "delta_nwc": 70}
+  ],
+  "wacc": 0.09,
+  "terminal_growth": 0.03,
+  "shares_outstanding": 100,
+  "tax_rate": 0.25,
+  "cash": 500,
+  "debt": 1500,
+  "wacc_step": 0.01,
+  "growth_step": 0.005,
+  "wacc_points": 5,
+  "growth_points": 5
+}
+```
+
+پاسخ (مختصر؛ مقادیر گرد شده‌اند):
+
+```json
+{
+  "wacc_values": [0.07, 0.08, 0.09, 0.1, 0.11],
+  "growth_values": [0.02, 0.025, 0.03, 0.035, 0.04],
+  "wacc_values_percent": [7.0, 8.0, 9.0, 10.0, 11.0],
+  "growth_values_percent": [2.0, 2.5, 3.0, 3.5, 4.0],
+  "value_per_share": [
+    [157.27, 173.04, 192.75, 218.09, 251.87],
+    [128.71, 139.07, 151.5, 166.69, 185.68],
+    [108.34, 115.58, 124.02, 134.0, 145.98],
+    [93.07, 98.36, 104.41, 111.39, 119.54],
+    [81.21, 85.21, 89.72, 94.82, 100.66]
+  ],
+  "enterprise_value": [["...همین شکل..."]],
+  "base_wacc": 0.09,
+  "base_terminal_growth": 0.03,
+  "base_row": 2,
+  "base_col": 2,
+  "base_value_per_share": 124.02201272656133,
+  "base_enterprise_value": 13402.201272656133,
+  "valid_cells": 25,
+  "total_cells": 25
+}
+```
+
+نکته‌ها برای فرانت‌اند:
+
+- `matrix[i][j]` متعلق به `wacc_values[i]` (سطر) و `growth_values[j]` (ستون) است؛
+  همین قاعده برای `enterprise_value` هم برقرار است.
+- `null` یعنی آن ترکیب نامعتبر است (مثلاً WACC ≤ 0 یا اختلاف WACC و رشد کمتر از
+  `MIN_SPREAD`)؛ چنین سلولی را خالی/خاکستری رندر کنید، نه صفر.
+- `valid_cells` و `total_cells` برای نمایش نسبت پوشش ماتریس آماده‌اند.
+
+### DCF معکوس (رشد پایانی تلویحی بازار)
+
+به ازای قیمت بازار، نرخ رشد پایانی‌ای را پیدا می‌کند که ارزش هر سهم را برابر
+قیمت بازار کند. جستجو در بازه `[−20%، WACC − 0.5%]` با نصف‌سازی انجام
+می‌شود؛ اگر قیمت بیرون بازه باشد، خطا برنمی‌گردد و وضعیت
+`market_price_below_range` یا `market_price_above_range` گزارش می‌شود.
+
+```json
+{
+  "projections": ["...همان پنج سال بالا..."],
+  "wacc": 0.09,
+  "shares_outstanding": 100,
+  "tax_rate": 0.25,
+  "market_price": 120.0,
+  "cash": 500,
+  "debt": 1500,
+  "terminal_growth": 0.03
+}
+```
+
+پاسخ واقعی برای همین ورودی (مقادیر گرد شده):
+
+```json
+{
+  "status": "solved",
+  "market_price": 120.0,
+  "implied_growth": 0.027718738173134614,
+  "implied_growth_percent": 2.77,
+  "wacc": 0.09,
+  "wacc_percent": 9.0,
+  "search_min_growth": -0.2,
+  "search_max_growth": 0.085,
+  "value_per_share_at_min_growth": 36.93,
+  "value_per_share_at_max_growth": 1331.89,
+  "enterprise_value": 13000.0,
+  "equity_value": 12000.0,
+  "terminal_value_share_percent": 76.72,
+  "reference_terminal_growth": 0.03,
+  "growth_gap": -0.0023,
+  "growth_gap_percent": -0.23,
+  "message": "بازار با این قیمت، رشد پایانی حدود 2.77% را فرض کرده است"
+}
+```
+
+نکته‌ها برای فرانت‌اند:
+
+- `terminal_growth` در درخواست اختیاری است؛ نرخ رشد پایانی خود تحلیل‌گر است و
+  فقط برای محاسبه `growth_gap` (تلویحی منهای مرجع) استفاده می‌شود.
+- `status` سه مقدار دارد: `solved` یعنی `implied_growth` مقدار دارد؛ در
+  `market_price_below_range` و `market_price_above_range` مقدار
+  `implied_growth` و همچنین `implied_growth_percent`، `enterprise_value`،
+  `equity_value` و `terminal_value_share_percent` برابر `null` است.
+- `message` فارسی و آماده نمایش است و در حالت‌های خارج از بازه، کرانه‌های جستجو
+  را هم ذکر می‌کند.
+
+### سناریوهای وزنی DCF
+
+دو تا پنج سناریوی مستقل با `dcf_valuation` ارزش‌گذاری می‌شوند؛ ورودی‌های
+ترازنامه و تعداد سهام مشترک‌اند. شکست حتی یک سناریو کل درخواست را با همان
+نوع خطا و نام سناریو رد می‌کند؛ سناریوی با احتمال صفر نیز بررسی می‌شود.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/valuation/dcf-scenarios \
+  -H "Content-Type: application/json" -d @scenarios.json
+```
+
+بدنهٔ `scenarios.json`:
+
+```json
+{
+  "scenarios": [
+    {"name": "bear", "probability": 0.5, "wacc": 0.1, "terminal_growth": 0.0,
+     "projections": [{"ebit": 100, "depreciation": 0, "capex": 0, "delta_nwc": 0}]},
+    {"name": "bull", "probability": 0.5, "wacc": 0.1, "terminal_growth": 0.0,
+     "projections": [{"ebit": 200, "depreciation": 0, "capex": 0, "delta_nwc": 0}]}
+  ],
+  "shares_outstanding": 10,
+  "tax_rate": 0.0
+}
+```
+
+پاسخ مختصر واقعی (مقادیر گرد شده‌اند):
+
+```json
+{
+  "scenarios": [
+    {"name": "bear", "probability": 0.5, "probability_percent": 50.0,
+     "value_per_share": 100.0, "weighted_value_per_share": 50.0,
+     "upside": null, "upside_percent": null},
+    {"name": "bull", "probability": 0.5, "probability_percent": 50.0,
+     "value_per_share": 200.0, "weighted_value_per_share": 100.0,
+     "upside": null, "upside_percent": null}
+  ],
+  "expected_value_per_share": 150.0,
+  "expected_enterprise_value": 1500.0,
+  "expected_equity_value": 1500.0,
+  "std_dev_value_per_share": 50.0,
+  "min_value_per_share": 100.0,
+  "max_value_per_share": 200.0,
+  "worst_scenario": "bear",
+  "best_scenario": "bull",
+  "market_price": null,
+  "expected_upside": null,
+  "expected_upside_percent": null,
+  "probability_of_upside": null,
+  "probability_of_upside_percent": null
+}
+```
+
+نکته‌ها برای فرانت‌اند:
+
+- سطرهای `scenarios` ترتیب ورودی را حفظ می‌کنند؛ در تساوی بهترین/بدترین،
+  نخستین سناریو برنده است.
+- `probability` باید در بازهٔ صفر تا یک و مجموع آن‌ها برابر یک با تلورانس
+  `1e-6` باشد؛ هیچ نرمال‌سازی خودکاری انجام نمی‌شود.
+- بدون `market_price` همهٔ `upside`، `upside_percent`، `expected_upside*` و
+  `probability_of_upside*` برابر `null` هستند. با قیمت بازار، احتمال رشد فقط
+  سناریوهای با `value_per_share > market_price` را جمع می‌کند.
+- `min_value_per_share`، `max_value_per_share` و `expected_value_per_share`
+  ورودی نمودار بازهٔ ارزش به سبک football-field هستند.
+
+### رشد پایدار و NPVGO
+
+این مدل از `EPS₁`، بازده مورد انتظار، `ROE` و نسبت نگهداری سود، رشد پایدار
+و NPVGO را استخراج می‌کند. اگر `ROE == r` باشد NPVGO تقریباً صفر است؛
+سرمایه‌گذاری با `ROE < r` ارزش را کاهش می‌دهد. نسبت نگهداری باید کمتر از یک
+و اختلاف `r − g` مطابق همان اعتبارسنج و `MIN_SPREAD` موجود باشد.
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/valuation/sustainable-growth \
+  -H "Content-Type: application/json" \
+  -d '{"eps":5.0,"r":0.12,"roe":0.15,"retention_ratio":0.4}'
+```
+
+پاسخ مختصر واقعی (مقادیر گرد شده‌اند؛ هر ده نقطهٔ منحنی نمایش داده شده‌اند):
+
+```json
+{
+  "sustainable_growth": 0.06,
+  "sustainable_growth_percent": 6.0,
+  "payout_ratio": 0.6,
+  "next_dividend": 3.0,
+  "price": 50.0,
+  "no_growth_value": 41.6667,
+  "npvgo": 8.3333,
+  "growth_share_percent": 16.6667,
+  "justified_pe": 10.0,
+  "growth_creates_value": true,
+  "retention_curve": [
+    {"retention_ratio": 0.0, "sustainable_growth": 0.0, "price": 41.6667, "npvgo": 0.0},
+    {"retention_ratio": 0.1, "sustainable_growth": 0.015, "price": 42.8571, "npvgo": 1.1905},
+    {"retention_ratio": 0.2, "sustainable_growth": 0.03, "price": 44.4444, "npvgo": 2.7778},
+    {"retention_ratio": 0.3, "sustainable_growth": 0.045, "price": 46.6667, "npvgo": 5.0},
+    {"retention_ratio": 0.4, "sustainable_growth": 0.06, "price": 50.0, "npvgo": 8.3333},
+    {"retention_ratio": 0.5, "sustainable_growth": 0.075, "price": 55.5556, "npvgo": 13.8889},
+    {"retention_ratio": 0.6, "sustainable_growth": 0.09, "price": 66.6667, "npvgo": 25.0},
+    {"retention_ratio": 0.7, "sustainable_growth": 0.105, "price": 100.0, "npvgo": 58.3333},
+    {"retention_ratio": 0.8, "sustainable_growth": 0.12, "price": null, "npvgo": null},
+    {"retention_ratio": 0.9, "sustainable_growth": 0.135, "price": null, "npvgo": null}
+  ]
+}
+```
+
+نکته‌ها برای فرانت‌اند:
+
+- نقاط `retention_curve` با `price: null` ترکیب نامعتبر رشد و بازده هستند؛
+  آن‌ها را به شکل شکاف در نمودار خطی رندر کنید، نه قیمت صفر.
+- درصدهای رشد پایدار و نگهداری سود برای هر نقطه در پاسخ کامل آماده‌اند.
+- مسیر موجود `/growth-opportunities` با NPVGO دستی دست‌نخورده است؛ مسیر جدید
+  NPVGO را از ROE و نسبت نگهداری سود به دست می‌آورد.
 
 ### قرارداد خطا
 
@@ -171,6 +420,10 @@ docker run -p 8000:8000 stock-valuation-api
 - `.dockerignore` محیط‌های مجازی، کش پایتون، `.git`، `.streamlit`،
   `stock_valuation/ui/`، `frontend/` و `tests/` را از بستر بیلد حذف می‌کند.
 - سرویس روی `0.0.0.0:8000` گوش می‌دهد.
+- کانتینر با کاربر غیر ریشه `appuser` (uid `10001`) اجرا می‌شود و
+  `PYTHONUNBUFFERED=1` لاگ‌ها را بی‌درنگ در `docker logs` نشان می‌دهد.
+- `HEALTHCHECK` هر ۳۰ ثانیه `GET /health` را با `urllib` صدا می‌زند (تصویر
+  `slim` ابزار `curl` ندارد)؛ وضعیت در ستون `STATUS` خروجی `docker ps` دیده می‌شود.
 
 ## فرانت‌اند React
 
@@ -234,15 +487,17 @@ python3 -m unittest tests.test_valuation_models -v
 python3 -m pytest tests -v
 ```
 
-مجموعه تست شامل ۹۴ تست است: مقادیر مرجع مدل‌ها (شامل WACC و DCF)، سازگاری
+مجموعه تست شامل ۱۵۷ تست است: مقادیر مرجع مدل‌ها (شامل WACC و DCF)، سازگاری
 ارزش فعلی اجزا با قیمت کل، حداقل اختلاف نرخ بازده/WACC و رشد، ورودی‌های خالی
-یا ناهم‌خوان، آستانه‌های تفسیر PEG، قطعی‌بودن خروجی‌ها و بررسی نبود وابستگی
-لایه محاسباتی به Streamlit.
+یا ناهم‌خوان، آستانه‌های تفسیر PEG، ماتریس حساسیت DCF (سلول مرکزی، محورها،
+سلول‌های نامعتبر و پارامترهای شبکه)، رفت‌وبرگشت و حالت‌های خارج از بازه DCF
+معکوس، احتمال‌ها و آمار ریسک سناریوهای وزنی، هویت‌های NPVGO و منحنی رشد
+پایدار، قطعی‌بودن خروجی‌ها و بررسی نبود وابستگی لایه محاسباتی به Streamlit.
 
 در خود برنامه نیز دکمه «اجرای تست‌های سیستم» در نوار کناری، تست‌های دودی
 (`self_tests.run_self_tests`) را اجرا و نتیجه را نمایش می‌دهد.
 
-لایه API در حال حاضر تست خودکار ندارد؛ صحت هر ۱۴ endpoint، قرارداد خطا و
+لایه API در حال حاضر تست خودکار ندارد؛ صحت هر ۱۸ endpoint، قرارداد خطا و
 پاسخ 422 با فراخوانی واقعی HTTP بررسی شده است.
 
 ## افزودن مدل جدید
@@ -261,7 +516,7 @@ python3 -m pytest tests -v
    `stock_cla_developed.py` اضافه کنید.
 5. برای تابع جدید تست در `tests/test_valuation_models.py` بنویسید.
 
-> لایه دامنه هنوز تنها جایی است که فرمول‌ها در آن قرار دارند. هرگونه مدلی که
-> در آینده اضافه شود باید یک تابع خالص، یک آینه طرحواره و یک مسیر سه خطی
-> باشد — این الگو همان چیزی است که نقاط پایانی را در هر چهار مرحله از
-> ریاضیات تکراری دور نگه می‌دارد.
+>توسعه مدل‌های جدید: فرمول‌ها صرفاً در لایه دامنه نگهداری می‌شوند. برای اضافه کردن هر مدل جدید، تنها به نوشتن یک تابع محاسباتی کاملاً ایزوله، یک طرحواره Pydantic و یک روت هدایت‌کننده نیاز دارید. این ساختار تضمین می‌کند که رابط‌های کاربری و مسیرهای API هیچ‌گاه درگیر منطق ریاضی تکراری نشوند. 
+>
+>
+>

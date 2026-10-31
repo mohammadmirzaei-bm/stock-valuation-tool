@@ -4,6 +4,9 @@
 تغییر نمی‌دهند و هیچ وابستگی‌ای به Streamlit ندارند.
 """
 
+import math
+from typing import List
+
 from .errors import ValidationError
 
 # حداقل اختلاف مجاز بین نرخ بازده و نرخ رشد (۰.۵ درصد)
@@ -11,6 +14,21 @@ MIN_SPREAD = 0.005
 
 # حداکثر تعداد سال‌های پیش‌بینی صریح در مدل DCF
 MAX_PROJECTIONS = 50
+
+# گام‌های پیش‌فرض محورهای ماتریس حساسیت DCF (WACC × رشد پایانی)
+DEFAULT_WACC_STEP = 0.01
+DEFAULT_GROWTH_STEP = 0.005
+
+# تعداد پیش‌فرض و بازه مجاز نقاط هر محور ماتریس حساسیت؛ فرد است تا
+# حالت پایه دقیقاً در سلول مرکزی قرار بگیرد.
+DEFAULT_SENSITIVITY_POINTS = 5
+MIN_SENSITIVITY_POINTS = 3
+MAX_SENSITIVITY_POINTS = 11
+
+MIN_SCENARIOS = 2
+MAX_SCENARIOS = 5
+PROBABILITY_SUM_TOLERANCE = 1e-6
+RETENTION_CURVE_STEP = 0.1
 
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
@@ -142,3 +160,73 @@ def validate_projections_length(count: int) -> None:
         raise ValidationError(
             f"❌ تعداد سال‌های پیش‌بینی نباید بیشتر از {MAX_PROJECTIONS} باشد!"
         )
+
+
+def validate_sensitivity_grid(wacc_step: float, growth_step: float,
+                              wacc_points: int, growth_points: int) -> None:
+    """
+    اعتبارسنجی پارامترهای شبکه ماتریس حساسیت DCF (WACC × رشد پایانی)
+
+    گام‌ها باید متناهی و مثبت باشند؛ تعداد نقاط هر محور باید عدد صحیح، فرد
+    (تا حالت پایه دقیقاً در سلول مرکزی قرار گیرد) و بین
+    ``MIN_SENSITIVITY_POINTS`` و ``MAX_SENSITIVITY_POINTS`` باشد.
+
+    Args:
+        wacc_step (float): فاصله نقاط محور WACC (اعشاری)
+        growth_step (float): فاصله نقاط محور رشد پایانی (اعشاری)
+        wacc_points (int): تعداد نقاط محور WACC
+        growth_points (int): تعداد نقاط محور رشد پایانی
+
+    Raises:
+        ValidationError: اگر هر یک از پارامترهای شبکه نامعتبر باشد
+    """
+    for step, field_name in (
+        (wacc_step, "گام نرخ WACC"),
+        (growth_step, "گام نرخ رشد پایانی"),
+    ):
+        if not math.isfinite(step):
+            raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+        if step <= 0:
+            raise ValidationError(f"❌ {field_name} باید مثبت باشد!")
+
+    for points, field_name in (
+        (wacc_points, "تعداد نقاط محور WACC"),
+        (growth_points, "تعداد نقاط محور رشد پایانی"),
+    ):
+        if isinstance(points, bool) or not isinstance(points, int):
+            raise ValidationError(f"❌ {field_name} باید عدد صحیح باشد!")
+        if points % 2 == 0:
+            raise ValidationError(
+                f"❌ {field_name} باید فرد باشد تا حالت پایه در مرکز قرار گیرد!"
+            )
+        if not MIN_SENSITIVITY_POINTS <= points <= MAX_SENSITIVITY_POINTS:
+            raise ValidationError(
+                f"❌ {field_name} باید بین {MIN_SENSITIVITY_POINTS} و "
+                f"{MAX_SENSITIVITY_POINTS} باشد!"
+            )
+
+
+def validate_scenario_set(names: List[str], probabilities: List[float]) -> None:
+    """اعتبارسنجی تعداد، نام‌ها و احتمال سناریوها بدون نرمال‌سازی."""
+    if not MIN_SCENARIOS <= len(names) <= MAX_SCENARIOS:
+        raise ValidationError(
+            f"❌ تعداد سناریوها باید بین {MIN_SCENARIOS} و {MAX_SCENARIOS} باشد!"
+        )
+    if len(names) != len(probabilities):
+        raise ValidationError("❌ تعداد نام‌ها و احتمال سناریوها باید برابر باشد!")
+    if any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValidationError("❌ نام سناریو باید غیرخالی باشد!")
+    if len({name.strip() for name in names}) != len(names):
+        raise ValidationError("❌ نام سناریوها باید یکتا باشد!")
+    for probability in probabilities:
+        if not math.isfinite(probability) or not 0 <= probability <= 1:
+            raise ValidationError("❌ احتمال هر سناریو باید متناهی و بین 0 و 1 باشد!")
+    total = sum(probabilities)
+    if abs(total - 1.0) > PROBABILITY_SUM_TOLERANCE:
+        raise ValidationError(f"❌ مجموع احتمال سناریوها ({total}) باید برابر 1 باشد!")
+
+
+def validate_retention_ratio(b: float) -> None:
+    """نسبت نگهداری سود باید متناهی و در بازهٔ ۰ ≤ b < ۱ باشد."""
+    if not math.isfinite(b) or not 0 <= b < 1:
+        raise ValidationError("❌ نسبت نگهداری سود باید متناهی و بین 0 و 1 (غیرشامل) باشد!")
