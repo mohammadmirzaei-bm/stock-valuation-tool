@@ -14,12 +14,11 @@ WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
 
 # وابستگی‌ها جدا از کد کپی می‌شوند تا تغییر سورس، کش این لایه را باطل نکند.
-# فقط وابستگی‌های بک‌اند نصب می‌شوند؛ پشته Streamlit (requirements.txt) در تصویر لازم نیست.
+# فقط وابستگی‌های بک‌اند نصب می‌شوند؛ requirements.txt در تصویر لازم نیست.
 COPY --chown=appuser:appuser requirements-api.txt ./
 RUN pip install --no-cache-dir -r requirements-api.txt
 
-# فقط کد بک‌اند وارد تصویر می‌شود. نقطه ورود Streamlit، تنظیمات .streamlit،
-# لایه نمایش `stock_valuation/ui` و فرانت‌اند React با .dockerignore حذف می‌شوند.
+# فقط کد بک‌اند وارد تصویر می‌شود؛ فرانت‌اند React با .dockerignore حذف می‌شود.
 COPY --chown=appuser:appuser stock_valuation ./stock_valuation
 
 USER appuser
