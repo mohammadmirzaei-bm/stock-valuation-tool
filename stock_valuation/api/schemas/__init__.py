@@ -10,6 +10,9 @@
     capital: میانگین موزون هزینه سرمایه (WACC)
     dcf: مدل‌های DCF بر پایه FCFF
     dcf_analysis: سناریوها، ماتریس حساسیت و DCF معکوس
+    forecast: پیش‌بینی مبتنی بر محرک‌ها
+    multiples: ارزش‌گذاری نسبی با ضریب همتایان
+    football_field: خلاصه زمین فوتبال
 
 نکات طراحی:
     1. کلاس‌های پاسخ، آینه مدل‌های دامنه (NamedTuple / dataclass منجمد) هستند
@@ -42,6 +45,20 @@ from .dcf_analysis import (
     ReverseDcfRequest,
     ReverseDcfResult,
     ScenarioRowResult,
+)
+from .football_field import (
+    FootballFieldRequest,
+    FootballFieldResult,
+    FootballFieldRowResult,
+    ValuationRangeInput,
+)
+from .forecast import ForecastRequest, ForecastResult, ForecastYearRowResult
+from .multiples import (
+    ImpliedCaseResult,
+    ImpliedValuationResult,
+    MultiplesRequest,
+    PeerMultipleInput,
+    PeerStatisticsResult,
 )
 from .equity import (
     AnnualDividendYieldRequest,
@@ -120,4 +137,16 @@ __all__ = [
     "SustainableGrowthRequest",
     "PegRequest",
     "RiskPremiumRequest",
+    "ForecastRequest",
+    "ForecastYearRowResult",
+    "ForecastResult",
+    "PeerMultipleInput",
+    "MultiplesRequest",
+    "PeerStatisticsResult",
+    "ImpliedCaseResult",
+    "ImpliedValuationResult",
+    "ValuationRangeInput",
+    "FootballFieldRequest",
+    "FootballFieldRowResult",
+    "FootballFieldResult",
 ]

@@ -30,6 +30,20 @@ MAX_SCENARIOS = 5
 PROBABILITY_SUM_TOLERANCE = 1e-6
 RETENTION_CURVE_STEP = 0.1
 
+# کرانه‌های نرخ رشد درآمد در پیش‌بینی مبتنی بر محرک‌ها (اعشاری)
+MIN_REVENUE_GROWTH = -1.0  # انحصاری: رشد ≤ −۱۰۰٪ درآمد سال بعد را منفی می‌کند
+MAX_REVENUE_GROWTH = 2.0  # حداکثر ۲۰۰٪ رشد سالانه؛ همان سقف validate_percentage
+
+# حداکثر نسبت‌های درصدی محرک‌های پیش‌بینی (نسبت به درآمد یا درآمد افزایشی)
+MAX_FORECAST_PERCENT = 1.0  # حداکثر ۱۰۰٪ از درآمد
+
+# حداقل تعداد همتایان معتبر با ضریب مثبت برای گزارش آماره‌های ارزش‌گذاری نسبی
+MIN_PEERS = 3
+
+# بازه مجاز تعداد ردیف‌های خلاصه زمین فوتبال
+MIN_FOOTBALL_RANGES = 1
+MAX_FOOTBALL_RANGES = 12
+
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
 
@@ -206,6 +220,67 @@ def validate_sensitivity_grid(wacc_step: float, growth_step: float,
             )
 
 
+def validate_forecast_years(years: int) -> None:
+    """
+    اعتبارسنجی تعداد سال‌های پیش‌بینی مبتنی بر محرک‌ها (۱ تا MAX_PROJECTIONS)
+
+    Args:
+        years (int): تعداد سال‌ها؛ باید عدد صحیح باشد (bool رد می‌شود)
+
+    Raises:
+        ValidationError: اگر عدد صحیح نباشد یا خارج از بازه مجاز باشد
+    """
+    if isinstance(years, bool) or not isinstance(years, int):
+        raise ValidationError("❌ تعداد سال‌های پیش‌بینی باید عدد صحیح باشد!")
+    validate_projections_length(years)
+
+
+def validate_forecast_growth(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی نرخ رشد محرک‌های پیش‌بینی: متناهی و بیشتر از −۱۰۰٪
+
+    کرانه پایین انحصاری است (رشد ≤ −۱۰۰٪ درآمد سال بعد را صفر یا منفی
+    می‌کند) و کرانه بالا ``MAX_REVENUE_GROWTH`` (۲۰۰٪) است؛ همان سقف
+    مجاز درصدها در ``validate_percentage``.
+
+    Args:
+        value (float): نرخ رشد (اعشاری)
+        field_name (str): نام فیلد
+
+    Raises:
+        ValidationError: اگر نامتناهی یا خارج از بازه باشد
+    """
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if not MIN_REVENUE_GROWTH < value <= MAX_REVENUE_GROWTH:
+        raise ValidationError(
+            f"❌ {field_name} باید بیشتر از {MIN_REVENUE_GROWTH} "
+            f"و حداکثر {MAX_REVENUE_GROWTH} باشد!"
+        )
+
+
+def validate_forecast_percent(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی نسبت‌های درصدی محرک‌های پیش‌بینی: متناهی و ۰ تا ۱۰۰٪
+
+    حاشیه سود عملیاتی و نسبت‌های استهلاک، Capex و NWC نسبت به درآمد فرض
+    می‌شوند نامنفی و حداکثر برابر کل درآمد (۱۰۰٪) باشند.
+
+    Args:
+        value (float): نسبت درصدی (اعشاری)
+        field_name (str): نام فیلد
+
+    Raises:
+        ValidationError: اگر نامتناهی یا خارج از بازه ۰ تا ۱ باشد
+    """
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if not 0 <= value <= MAX_FORECAST_PERCENT:
+        raise ValidationError(
+            f"❌ {field_name} باید بین 0 و {MAX_FORECAST_PERCENT} باشد!"
+        )
+
+
 def validate_scenario_set(names: List[str], probabilities: List[float]) -> None:
     """اعتبارسنجی تعداد، نام‌ها و احتمال سناریوها بدون نرمال‌سازی."""
     if not MIN_SCENARIOS <= len(names) <= MAX_SCENARIOS:
@@ -236,3 +311,101 @@ def require_finite_number(value: float, field_name: str) -> None:
     """ورودی باید عدد متناهی باشد؛ در غیر این صورت ValidationError."""
     if not math.isfinite(value):
         raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+
+
+def validate_peer_count(count: int) -> None:
+    """
+    اعتبارسنجی تعداد همتایان معتبر با ضریب مثبت
+
+    ضریب‌های غیرمثبت (مثل P/E شرکت زیان‌ده) از آماره‌ها کنار گذاشته
+    می‌شوند؛ اگر پس از حذف کمتر از ``MIN_PEERS`` همتا بماند، آماره‌ها
+    معنادار نیستند.
+
+    Args:
+        count (int): تعداد همتایان معتبر باقی‌مانده
+
+    Raises:
+        ValidationError: اگر تعداد کمتر از ``MIN_PEERS`` باشد
+    """
+    if count < MIN_PEERS:
+        raise ValidationError(
+            f"❌ حداقل {MIN_PEERS} همتای معتبر با ضریب مثبت لازم است!"
+        )
+
+
+def validate_valuation_metric(value: float, field_name: str) -> None:
+    """
+    اعتبارسنجی شاخص هدف ضریب‌های نسبی: عدد متناهی و مثبت
+
+    ضریب‌های قیمت/سود، قیمت/فروش و EV/EBITDA برای شاخص غیرمثبت (مثل سود
+    خالص منفی) معنای اقتصادی ندارند.
+
+    Args:
+        value (float): شاخص هدف (سود خالص، حقوق صاحبان سهام، درآمد، ...)
+        field_name (str): نام فیلد برای نمایش خطا
+
+    Raises:
+        ValidationError: اگر مقدار عدد نباشد، نامتناهی باشد یا مثبت نباشد
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValidationError(f"❌ {field_name} باید عدد باشد!")
+    if not math.isfinite(value):
+        raise ValidationError(f"❌ {field_name} باید عدد متناهی باشد!")
+    if value <= 0:
+        raise ValidationError(
+            f"❌ {field_name} باید مثبت باشد؛ ضریب‌ها برای مقدار غیرمثبت معنا ندارند!"
+        )
+
+
+def validate_football_range_set(
+    names: List[str],
+    lows: List[float],
+    mids: List[float],
+    highs: List[float],
+) -> None:
+    """
+    اعتبارسنجی مجموعه بازه‌های خلاصه زمین فوتبال
+
+    تعداد بین ``MIN_FOOTBALL_RANGES`` و ``MAX_FOOTBALL_RANGES`` است؛ نام
+    روش‌ها پس از حذف فاصله‌های ابتدا و انتها غیرخالی و یکتا هستند و هر
+    بازه کرانه‌های متناهی با ``low ≤ mid ≤ high`` دارد. مقادیر منفی مجازند.
+
+    Args:
+        names (List[str]): نام روش ارزیابی هر بازه
+        lows (List[float]): کرانه پایین هر بازه
+        mids (List[float]): مقدار میانی هر بازه
+        highs (List[float]): کرانه بالای هر بازه
+
+    Raises:
+        ValidationError: اگر تعداد، نام‌ها یا کرانه‌های بازه‌ها نامعتبر باشند
+    """
+    if not MIN_FOOTBALL_RANGES <= len(names) <= MAX_FOOTBALL_RANGES:
+        raise ValidationError(
+            f"❌ تعداد بازه‌ها باید بین {MIN_FOOTBALL_RANGES} و "
+            f"{MAX_FOOTBALL_RANGES} باشد!"
+        )
+    if len(names) != len(lows) or len(names) != len(mids) or len(names) != len(highs):
+        raise ValidationError("❌ تعداد نام‌ها و کرانه‌های بازه‌ها باید برابر باشد!")
+    if any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValidationError("❌ نام روش ارزیابی باید غیرخالی باشد!")
+    if len({name.strip() for name in names}) != len(names):
+        raise ValidationError("❌ نام روش‌های ارزیابی باید یکتا باشد!")
+
+    for index, name in enumerate(names):
+        label = name.strip()
+        for value, field_name in (
+            (lows[index], "کرانه پایین"),
+            (mids[index], "مقدار میانی"),
+            (highs[index], "کرانه بالا"),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValidationError(f"❌ {field_name} بازه «{label}» باید عدد باشد!")
+            if not math.isfinite(value):
+                raise ValidationError(
+                    f"❌ {field_name} بازه «{label}» باید عدد متناهی باشد!"
+                )
+        if not lows[index] <= mids[index] <= highs[index]:
+            raise ValidationError(
+                f"❌ در بازه «{label}» باید کرانه پایین ≤ مقدار میانی ≤ "
+                f"کرانه بالا باشد!"
+            )
