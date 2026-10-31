@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from ..domain.errors import CalculationError, ValidationError
 from .errors import calculation_error_handler, validation_error_handler
 from .routes import router
+from .routes.portfolio import router as portfolio_router
 from .schemas import ErrorResponse
 
 # میزبان‌های پیش‌فرض React در حالت توسعه: Vite و Create React App
@@ -52,10 +53,12 @@ app.add_middleware(
 app.add_exception_handler(ValidationError, validation_error_handler)
 app.add_exception_handler(CalculationError, calculation_error_handler)
 
-app.include_router(
-    router,
-    responses={400: {"model": ErrorResponse, "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"}},
-)
+_DOMAIN_ERROR = {
+    400: {"model": ErrorResponse, "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"},
+}
+
+app.include_router(router, responses=_DOMAIN_ERROR)
+app.include_router(portfolio_router, responses=_DOMAIN_ERROR)
 
 
 @app.get("/health", summary="بررسی سلامت سرویس")

@@ -12,6 +12,7 @@ from stock_valuation.domain.portfolio_stats import (
     SampleStatistics,
     returns_from_prices,
     sample_statistics,
+    statistics_from_prices,
 )
 from stock_valuation.domain.validators import (
     CORRELATION_TOLERANCE,
@@ -122,6 +123,18 @@ class TestSampleStatistics(unittest.TestCase):
         result = sample_statistics(returns_from_prices(_PRICES), 1)
         direct = sample_statistics(_RETURNS, 1)
         self.assertEqual(result, direct)
+
+    def test_statistics_from_prices_matches_composed_calls(self):
+        prices = [row[:] for row in _PRICES]
+        snapshot = [row[:] for row in prices]
+        combined = statistics_from_prices(["الف", "ب"], prices, 1)
+        composed = sample_statistics(returns_from_prices(_PRICES), 1)
+        self.assertEqual(combined, composed)
+        self.assertEqual(prices, snapshot)
+        with self.assertRaises(ValidationError):
+            statistics_from_prices(["الف", "الف"], _PRICES, 1)
+        with self.assertRaises(ValidationError):
+            statistics_from_prices(["الف"], _PRICES, 1)
 
     def test_constant_series_rejected(self):
         returns = returns_from_prices([[4.0, 4.0, 4.0], [4.0, 8.0, 4.0]])

@@ -1,7 +1,8 @@
 """آماره نمونه‌ای بازده دارایی‌ها، پیش از بهینه‌سازی سبد.
 
 هر فهرست داخلی سری زمانی یک دارایی است و اندیس زمانی بین دارایی‌ها هم‌تراز
-فرض می‌شود. این ماژول تاریخ نمی‌شناسد و نام دارایی نمی‌گیرد.
+فرض می‌شود. این ماژول تاریخ نمی‌شناسد. نام دارایی فقط در
+``statistics_from_prices`` برای یکتایی بررسی می‌شود و داخل آماره ذخیره نمی‌شود.
 
 سال‌سازی حسابی است، نه مرکب‌کردن:
     میانگین سالانه = میانگین حسابی بازده دوره × تعداد دوره‌ها در سال
@@ -30,6 +31,7 @@ from .validators import (
     MIN_OBSERVATIONS,
     SAMPLE_COVARIANCE_DDOF,
     validate_asset_count,
+    validate_asset_names,
     validate_periods_per_year,
 )
 
@@ -256,3 +258,33 @@ def _correlation(covariance: Sequence[Sequence[float]]) -> List[List[float]]:
             correlation[row_index][column_index] = value
             correlation[column_index][row_index] = value
     return correlation
+
+
+def statistics_from_prices(
+    asset_names: Sequence[str],
+    prices: Sequence[Sequence[float]],
+    periods_per_year: int,
+) -> SampleStatistics:
+    """
+    آماره سالانه نمونه‌ای مستقیم از سری قیمت
+
+    نام‌ها باید غیرخالی، یکتا و هم‌تعداد با سری‌های قیمت باشند. بازده ساده
+    با ``returns_from_prices`` و آماره با ``sample_statistics`` ساخته می‌شود؛
+    سال‌سازی همان مقیاس حسابی است. ترتیب دارایی‌ها در خروجی همان ترتیب ورودی است.
+
+    Args:
+        asset_names: نام دارایی‌ها به ترتیب سری‌های قیمت
+        prices: قیمت‌های مثبت و هم‌طول؛ هر فهرست داخلی یک دارایی است
+        periods_per_year: عدد صحیح ۱ تا ۳۶۶
+
+    Returns:
+        SampleStatistics: میانگین، کوواریانس، نوسان و همبستگی سالانه
+
+    Raises:
+        ValidationError: اگر نام‌ها، قیمت‌ها یا واریانس نمونه‌ای نامعتبر باشد
+        CalculationError: اگر بازده یا آماره سالانه متناهی نباشد
+    """
+    validate_asset_names(asset_names)
+    if not isinstance(prices, (list, tuple)) or len(prices) != len(asset_names):
+        raise ValidationError("❌ تعداد نام‌ها و سری‌های قیمت باید برابر باشد!")
+    return sample_statistics(returns_from_prices(prices), periods_per_year)

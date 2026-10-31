@@ -13,6 +13,7 @@
     forecast: پیش‌بینی مبتنی بر محرک‌ها
     multiples: ارزش‌گذاری نسبی با ضریب همتایان
     football_field: خلاصه زمین فوتبال
+    portfolio: آماره نمونه‌ای و بهینه‌سازی سبد
 
 نکات طراحی:
     1. کلاس‌های پاسخ، آینه مدل‌های دامنه (NamedTuple / dataclass منجمد) هستند
@@ -53,6 +54,18 @@ from .football_field import (
     ValuationRangeInput,
 )
 from .forecast import ForecastRequest, ForecastResult, ForecastYearRowResult
+from .portfolio import (
+    AllocationPointResult,
+    AssetPointResult,
+    CapitalAllocationLineResult,
+    CompletePortfolioResult,
+    PortfolioAnalysisResult,
+    PortfolioOptimizeRequest,
+    PortfolioPointResult,
+    PortfolioStatisticsRequest,
+    PortfolioStatisticsResult,
+    PriceSeriesInput,
+)
 from .multiples import (
     ImpliedCaseResult,
     ImpliedValuationResult,
@@ -149,4 +162,14 @@ __all__ = [
     "FootballFieldRequest",
     "FootballFieldRowResult",
     "FootballFieldResult",
+    "PriceSeriesInput",
+    "PortfolioStatisticsRequest",
+    "PortfolioStatisticsResult",
+    "PortfolioOptimizeRequest",
+    "AssetPointResult",
+    "PortfolioPointResult",
+    "AllocationPointResult",
+    "CapitalAllocationLineResult",
+    "CompletePortfolioResult",
+    "PortfolioAnalysisResult",
 ]
