@@ -11,11 +11,6 @@ env/
 .git/
 .gitignore
 
-# تنظیمات، نقطه ورود و لایه نمایش Streamlit — تصویر فقط بک‌اند است
-.streamlit/
-stock_cla_developed.py
-stock_valuation/ui/
-
 # فرانت‌اند React
 frontend/
 node_modules/
