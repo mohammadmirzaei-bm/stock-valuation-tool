@@ -40,6 +40,10 @@ MAX_FORECAST_PERCENT = 1.0  # حداکثر ۱۰۰٪ از درآمد
 # حداقل تعداد همتایان معتبر با ضریب مثبت برای گزارش آماره‌های ارزش‌گذاری نسبی
 MIN_PEERS = 3
 
+# بازه مجاز تعداد ردیف‌های خلاصه زمین فوتبال
+MIN_FOOTBALL_RANGES = 1
+MAX_FOOTBALL_RANGES = 12
+
 # تلورانس شناور فقط برای اعتبارسنج برچسب‌دار WACC؛ رفتار گوردون را تغییر نمی‌دهد
 _WACC_SPREAD_TOLERANCE = 1e-12
 
@@ -351,3 +355,57 @@ def validate_valuation_metric(value: float, field_name: str) -> None:
         raise ValidationError(
             f"❌ {field_name} باید مثبت باشد؛ ضریب‌ها برای مقدار غیرمثبت معنا ندارند!"
         )
+
+
+def validate_football_range_set(
+    names: List[str],
+    lows: List[float],
+    mids: List[float],
+    highs: List[float],
+) -> None:
+    """
+    اعتبارسنجی مجموعه بازه‌های خلاصه زمین فوتبال
+
+    تعداد بین ``MIN_FOOTBALL_RANGES`` و ``MAX_FOOTBALL_RANGES`` است؛ نام
+    روش‌ها پس از حذف فاصله‌های ابتدا و انتها غیرخالی و یکتا هستند و هر
+    بازه کرانه‌های متناهی با ``low ≤ mid ≤ high`` دارد. مقادیر منفی مجازند.
+
+    Args:
+        names (List[str]): نام روش ارزیابی هر بازه
+        lows (List[float]): کرانه پایین هر بازه
+        mids (List[float]): مقدار میانی هر بازه
+        highs (List[float]): کرانه بالای هر بازه
+
+    Raises:
+        ValidationError: اگر تعداد، نام‌ها یا کرانه‌های بازه‌ها نامعتبر باشند
+    """
+    if not MIN_FOOTBALL_RANGES <= len(names) <= MAX_FOOTBALL_RANGES:
+        raise ValidationError(
+            f"❌ تعداد بازه‌ها باید بین {MIN_FOOTBALL_RANGES} و "
+            f"{MAX_FOOTBALL_RANGES} باشد!"
+        )
+    if len(names) != len(lows) or len(names) != len(mids) or len(names) != len(highs):
+        raise ValidationError("❌ تعداد نام‌ها و کرانه‌های بازه‌ها باید برابر باشد!")
+    if any(not isinstance(name, str) or not name.strip() for name in names):
+        raise ValidationError("❌ نام روش ارزیابی باید غیرخالی باشد!")
+    if len({name.strip() for name in names}) != len(names):
+        raise ValidationError("❌ نام روش‌های ارزیابی باید یکتا باشد!")
+
+    for index, name in enumerate(names):
+        label = name.strip()
+        for value, field_name in (
+            (lows[index], "کرانه پایین"),
+            (mids[index], "مقدار میانی"),
+            (highs[index], "کرانه بالا"),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValidationError(f"❌ {field_name} بازه «{label}» باید عدد باشد!")
+            if not math.isfinite(value):
+                raise ValidationError(
+                    f"❌ {field_name} بازه «{label}» باید عدد متناهی باشد!"
+                )
+        if not lows[index] <= mids[index] <= highs[index]:
+            raise ValidationError(
+                f"❌ در بازه «{label}» باید کرانه پایین ≤ مقدار میانی ≤ "
+                f"کرانه بالا باشد!"
+            )
