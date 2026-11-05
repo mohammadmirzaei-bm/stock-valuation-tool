@@ -1,78 +1,207 @@
-/* استایل پایه — آینه ساختاری ui/theme.py و تایپوگرافی .streamlit/config.toml */
-
-/* فونت فارسی وزیرمتن از همان منبع Google Fonts که تم Streamlit بارگذاری می‌کرد.
-   @import باید پیش از @tailwind بماند. */
-@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap");
+/* Stock Valuation frontend — base styles.
+   Theme (dark) tokens, typography, RTL layout and LTR number/formula islands.
+   The design spec is authoritative: dark theme, Persian RTL, Latin digits by
+   default, tabular monospace numerals. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* رنگ‌های پایه رابط (config.toml [theme]) */
-  --color-primary: #1d4ed8;
-  --color-canvas: #ffffff;
-  --color-surface: #f1f5f9;
-  --color-panel: #f8fafc;
-  --color-ink: #0f172a;
-  --color-border: #e2e8f0;
-
-  /* رنگ‌های معنایی شاخص‌های مالی */
-  --color-positive: #15803d;
-  --color-negative: #b91c1c;
-  --color-caution: #a16207;
-  --color-warning: #c2410c;
-  --color-accent: #6d28d9;
-  --color-muted: #64748b;
-
-  /* رنگ‌های نمودار (ui/charts.py) */
-  --chart-bar: rgba(55, 128, 191, 0.7);
-  --chart-bar-stroke: rgba(55, 128, 191, 1);
-  --chart-bar-alt: rgba(255, 193, 7, 0.7);
-  --chart-line: #0000ff;
-  --chart-benchmark: #add8e6;
-  --chart-marker: #ff0000;
-
-  /* شعاع گوشه‌ها: baseRadius و buttonRadius */
-  --radius-base: 8px;
-}
-
+/* ----- Theme tokens (dark is the default; light is a variable swap later) ----- */
 @layer base {
-  /* جهت سراسری راست‌به‌چپ */
+  :root,
+  .dark {
+    /* Spec color tokens */
+    --bg: #0f1420;
+    --surface: #171e2e;
+    --border: #263047;
+    --text: #e6eaf2;
+    --text-muted: #9aa6bd; /* nudged lighter from #8C96AB to clear AA on --surface */
+    --primary: #4c8dc9;
+    --primary-foreground: #0f1420;
+    --positive: #4caf7a;
+    --negative: #e5645f;
+    --warning: #e0a33a;
+
+    /* Chart helpers */
+    --chart-bar: rgba(76, 141, 201, 0.7);
+
+    /* shadcn/ui semantic aliases mapped onto the spec tokens */
+    --background: var(--bg);
+    --foreground: var(--text);
+    --card: var(--surface);
+    --card-foreground: var(--text);
+    --popover: #1b2334;
+    --popover-foreground: var(--text);
+    --secondary: #202a3d;
+    --secondary-foreground: var(--text);
+    --muted: #1b2334;
+    --muted-foreground: var(--text-muted);
+    --accent: #263047;
+    --accent-foreground: var(--text);
+    --destructive: var(--negative);
+    --destructive-foreground: #0f1420;
+    --input: #263047;
+    --ring: #4c8dc9;
+
+    --radius: 12px;
+  }
+
   html {
     direction: rtl;
   }
 
   body {
-    direction: rtl;
-    text-align: right;
-    font-family: "Vazirmatn", Tahoma, sans-serif;
-    font-size: 15px;
-    font-weight: 400;
-    background-color: var(--color-canvas);
-    color: var(--color-ink);
+    @apply bg-background text-foreground font-sans text-body antialiased;
+    margin: 0;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse at 15% 0%, rgba(76, 141, 201, 0.07), transparent 36%);
   }
 
-  /* سلسله‌مراتب سرصفحه‌ها (headingFontSizes / headingFontWeights) */
-  h1 { font-size: 30px; font-weight: 700; }
-  h2 { font-size: 24px; font-weight: 600; }
-  h3 { font-size: 20px; font-weight: 600; }
-  h4 { font-size: 17px; font-weight: 600; }
-  h5 { font-size: 15px; font-weight: 500; }
-  h6 { font-size: 13px; font-weight: 500; }
-
-  /* ورودی‌های متنی و عددی راست‌چین */
-  input,
-  textarea,
-  select {
-    text-align: right;
+  /* Headings use the same Vazirmatn family, heavier weights */
+  h1 {
+    @apply text-[30px] font-bold leading-tight;
+  }
+  h2 {
+    @apply text-[24px] font-semibold;
+  }
+  h3 {
+    @apply text-[20px] font-semibold;
+  }
+  h4 {
+    @apply text-[17px] font-semibold;
   }
 
-  /* فرمول‌های ریاضی و جدول داده در جهت طبیعی خود بمانند */
-  .katex,
-  table[data-direction="ltr"] {
+  /* Visible focus ring for full keyboard navigation (accessibility) */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Respect reduced motion; keep transitions short */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* Dashboard surfaces: subtle depth while retaining the application's dark palette. */
+@layer components {
+  .app-header {
+    background: rgba(20, 27, 41, 0.94);
+    backdrop-filter: blur(16px);
+  }
+
+  .app-sidebar {
+    background: linear-gradient(180deg, #151d2c 0%, #111927 100%);
+  }
+
+  .brand-mark,
+  .tool-icon,
+  .step-number {
+    color: #8fc8f5;
+    background: linear-gradient(145deg, rgba(76, 141, 201, 0.23), rgba(76, 141, 201, 0.08));
+    border: 1px solid rgba(120, 180, 229, 0.18);
+  }
+
+  .sidebar-active {
+    box-shadow: inset -3px 0 0 var(--primary);
+  }
+
+  .dashboard-home {
+    max-width: 1600px;
+    margin-inline: auto;
+  }
+
+  .dashboard-hero {
+    background: radial-gradient(circle at 18% 50%, rgba(76, 141, 201, 0.21), transparent 36%),
+      linear-gradient(115deg, #182a40 0%, #19263a 48%, #192132 100%);
+    box-shadow: 0 16px 45px rgba(3, 8, 18, 0.16);
+  }
+
+  .hero-art-orbit {
+    position: absolute;
+    border: 1px solid rgba(143, 200, 245, 0.16);
+    border-radius: 50%;
+  }
+  .hero-art-orbit-outer { width: 240px; height: 240px; }
+  .hero-art-orbit-inner { width: 175px; height: 175px; border-style: dashed; }
+  .hero-art-icon {
+    display: grid;
+    width: 105px;
+    height: 105px;
+    place-items: center;
+    color: #a4d4fa;
+    border: 1px solid rgba(143, 200, 245, 0.24);
+    border-radius: 32px;
+    background: linear-gradient(145deg, rgba(76, 141, 201, 0.25), rgba(76, 141, 201, 0.07));
+    transform: rotate(-8deg);
+  }
+  .hero-art-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #8fc8f5; box-shadow: 0 0 16px #4c8dc9; }
+  .hero-art-dot-one { transform: translate(102px, -64px); }
+  .hero-art-dot-two { transform: translate(-78px, 91px); width: 6px; height: 6px; }
+
+  .workflow-card,
+  .dashboard-tool-card {
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 65%);
+    box-shadow: 0 8px 24px rgba(3, 8, 18, 0.12);
+  }
+  .workflow-card:hover,
+  .dashboard-tool-card:hover {
+    box-shadow: 0 12px 30px rgba(3, 8, 18, 0.22);
+  }
+  .workflow-card:hover { transform: translateY(-2px); }
+  .tool-link { background: rgba(15, 20, 32, 0.45); }
+}
+
+/* ----- LTR islands: numbers, formulas and variable names stay left-to-right ----- */
+@layer components {
+  .num {
     direction: ltr;
+    unicode-bidi: isolate;
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .formula {
+    direction: ltr;
+    unicode-bidi: isolate;
     text-align: left;
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  .ltr-table {
+    direction: ltr;
+  }
+  .ltr-table th:first-child,
+  .ltr-table td:first-child {
+    text-align: right;
+  }
+
+  /* Distinct null / invalid cell state: diagonal hatch, never a zero */
+  .null-cell {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 3px,
+      var(--border) 3px,
+      var(--border) 4px
+    );
+    color: var(--text-muted);
+  }
+
+  /* Loading opacity swap: keep the previous result visible */
+  .is-updating {
+    opacity: 0.5;
+    transition: opacity 150ms ease;
+  }
+
+  .card-surface {
+    @apply rounded-[var(--radius)] border border-border bg-surface;
   }
 }
 
@@ -80,8 +209,10 @@
   .ltr {
     direction: ltr;
   }
-
   .rtl {
     direction: rtl;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }

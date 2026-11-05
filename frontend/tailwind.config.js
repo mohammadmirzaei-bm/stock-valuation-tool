@@ -1,94 +1,114 @@
 /**
- * پیکربندی Tailwind — آینه بصری داشبورد Streamlit برای فرانت‌اند React.
+ * Tailwind config — Stock Valuation frontend.
  *
- * منابع استخراج:
- *   - `.streamlit/config.toml`  → رنگ‌های رابط، معنایی و پالت نمودارها
- *   - `ui/charts.py`            → رنگ‌های Plotly نمودارها و فونت ۱۲ پیکسلی
- *   - `ui/theme.py`             → فونت و ساختار RTL (در `src/index.css`)
- *
- * توجه: پالت نمودارها در `ui/charts.py` آبی پیش‌فرض Plotly
- * `rgb(55, 128, 191)` است که با رنگ اصلی تم (`#1D4ED8`) یکی نیست؛
- * هر دو در دسترس‌اند تا طراح آگاهانه انتخاب کند.
+ * Visual language is defined by the design spec (authoritative) as a dark,
+ * serious financial-analysis theme. Every color is exposed as a CSS variable
+ * (see src/index.css) so a second theme later is a variable swap, not a
+ * rewrite. Both the spec token names (bg/surface/text/...) and the shadcn/ui
+ * semantic aliases (background/card/primary/...) are mapped here.
  *
  * @type {import('tailwindcss').Config}
  */
-
-// رنگ دسته‌ای نمودارها (chartCategoricalColors در config.toml)
-const chartCategorical = [
-  "#1D4ED8",
-  "#0D9488",
-  "#7C3AED",
-  "#DC2626",
-  "#D97706",
-  "#0284C7",
-  "#64748B",
-  "#C2410C",
-];
-
-// رنگ ترتیبی نمودارها (chartSequentialColors در config.toml)
-const chartSequential = [
-  "#EFF6FF",
-  "#DBEAFE",
-  "#BFDBFE",
-  "#93C5FD",
-  "#60A5FA",
-  "#3B82F6",
-  "#2563EB",
-  "#1D4ED8",
-  "#1E40AF",
-  "#1E3A8A",
-];
-
 module.exports = {
+  darkMode: ["class"],
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
+    container: {
+      center: true,
+      padding: "1rem",
+      screens: { "2xl": "1440px" },
+    },
     extend: {
       colors: {
-        // رنگ‌های پایه رابط
-        primary: "#1D4ED8",
-        link: "#1D4ED8",
-        canvas: "#FFFFFF",
-        surface: "#F1F5F9",
-        panel: "#F8FAFC",
-        border: "#E2E8F0",
-        ink: "#0F172A",
+        // Spec color tokens (dark theme)
+        bg: "var(--bg)",
+        surface: "var(--surface)",
+        border: "var(--border)",
+        text: "var(--text)",
+        "text-muted": "var(--text-muted)",
+        primary: {
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
+        },
+        positive: "var(--positive)",
+        negative: "var(--negative)",
+        warning: "var(--warning)",
 
-        // رنگ‌های معنایی شاخص‌های مالی
-        positive: "#15803D",
-        negative: "#B91C1C",
-        caution: "#A16207",
-        warning: "#C2410C",
-        accent: "#6D28D9",
-        muted: "#64748B",
+        // shadcn/ui semantic aliases (also defined as CSS variables)
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: {
+          DEFAULT: "var(--card)",
+          foreground: "var(--card-foreground)",
+        },
+        popover: {
+          DEFAULT: "var(--popover)",
+          foreground: "var(--popover-foreground)",
+        },
+        secondary: {
+          DEFAULT: "var(--secondary)",
+          foreground: "var(--secondary-foreground)",
+        },
+        muted: {
+          DEFAULT: "var(--muted)",
+          foreground: "var(--muted-foreground)",
+        },
+        accent: {
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-foreground)",
+        },
+        destructive: {
+          DEFAULT: "var(--destructive)",
+          foreground: "var(--destructive-foreground)",
+        },
+        input: "var(--input)",
+        ring: "var(--ring)",
 
-        // رنگ‌های نمودار (Plotly در ui/charts.py)
+        // Chart series literals (ECharts reads these from CSS variables at runtime)
         chart: {
-          bar: "rgba(55, 128, 191, 0.7)",
-          "bar-stroke": "rgba(55, 128, 191, 1)",
-          "bar-alt": "rgba(255, 193, 7, 0.7)",
-          line: "#0000FF",
-          benchmark: "#ADD8E6",
-          marker: "#FF0000",
+          line: "var(--primary)",
+          bar: "var(--chart-bar)",
+          positive: "var(--positive)",
+          negative: "var(--negative)",
+          warning: "var(--warning)",
         },
       },
       fontFamily: {
-        // همین ترتیب در ui/charts.py برای فونت نمودارها استفاده می‌شد
         sans: ["Vazirmatn", "Tahoma", "sans-serif"],
+        mono: ["'JetBrains Mono Variable'", "'JetBrains Mono'", "ui-monospace", "monospace"],
+        numeric: ["'JetBrains Mono Variable'", "'JetBrains Mono'", "ui-monospace", "monospace"],
       },
       fontSize: {
-        // اندازه فونت نمودارهای Plotly
-        chart: "12px",
+        // Body minimum 15px; table numbers 14px (spec "Shape and spacing")
+        body: ["15px", { lineHeight: "1.6" }],
+        "table-num": ["14px", { lineHeight: "1.4" }],
       },
       borderRadius: {
-        // baseRadius و buttonRadius در config.toml
-        DEFAULT: "8px",
+        card: "var(--radius)",
+        lg: "calc(var(--radius) - 2px)",
+        md: "calc(var(--radius) - 4px)",
+        sm: "calc(var(--radius) - 6px)",
+      },
+      spacing: {
+        // 8px spacing grid
+        grid: "8px",
+        colgap: "24px",
+      },
+      keyframes: {
+        "accordion-down": {
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
+        },
+        "accordion-up": {
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
+        },
+      },
+      animation: {
+        "accordion-down": "accordion-down 0.18s ease-out",
+        "accordion-up": "accordion-up 0.18s ease-out",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
-
-// برای کتابخانه‌های چارت (Recharts/Plotly.js) که آرایه رنگ می‌خواهند:
-//   import { chartCategorical, chartSequential } from "../tailwind.config";
-module.exports.chartCategorical = chartCategorical;
-module.exports.chartSequential = chartSequential;

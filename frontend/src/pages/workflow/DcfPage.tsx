@@ -1,0 +1,204 @@
+import * as React from "react";
+import { PencilLine, TriangleAlert } from "lucide-react";
+import { SplitLayout } from "@/components/layout/SplitLayout";
+import { NumberField } from "@/components/model/NumberField";
+import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { Chip } from "@/components/common/Chip";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { CopyButton, CsvButton } from "@/components/common/ExportButtons";
+import { ProjectionsEditor } from "@/components/model/ProjectionsEditor";
+import { DcfWaterfall } from "@/components/charts/Waterfall";
+import { EmptyState, ErrorState, IncompleteState, ResultSkeleton } from "@/components/model/StateViews";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { postDcf } from "@/api/endpoints";
+import type { DcfRequest, DcfResult } from "@/api/types";
+import { useAutoQuery } from "@/hooks/useAutoQuery";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useWorkflow } from "@/store/workflow";
+import { useFormat } from "@/hooks/useFormat";
+import { MIN_SPREAD_PP } from "@/lib/validation";
+
+export function DcfPage() {
+  const fmt = useFormat();
+  const wf = useWorkflow();
+  const [terminalGrowth, setTerminalGrowth] = usePersistentState<number>("dcf-terminal-growth", 3);
+  const [editingRows, setEditingRows] = React.useState(false);
+
+  const projections = wf.projections ?? [];
+  const bs = wf.balanceSheet;
+  const wacc = wf.waccPercent ?? undefined;
+
+  const spreadOk = wacc !== undefined && terminalGrowth !== undefined && wacc - terminalGrowth >= MIN_SPREAD_PP;
+  const ready =
+    projections.length >= 1 &&
+    projections.length <= 50 &&
+    wacc !== undefined &&
+    wacc > 0 &&
+    spreadOk &&
+    bs.sharesOutstanding > 0 &&
+    bs.taxRate >= 0 &&
+    bs.taxRate < 100;
+
+  const body: DcfRequest | null = ready
+    ? {
+        projections,
+        wacc: (wacc as number) / 100,
+        terminal_growth: terminalGrowth / 100,
+        shares_outstanding: bs.sharesOutstanding,
+        tax_rate: bs.taxRate / 100,
+        cash: bs.cash,
+        debt: bs.debt,
+        minority_interest: bs.minorityInterest,
+        preferred_equity: bs.preferredEquity,
+      }
+    : null;
+
+  const query = useAutoQuery<DcfResult>("dcf", body, postDcf, ready);
+  const res = query.data;
+
+  const balance = (
+    <>
+      {wf.projections && (
+        <div className="flex items-center justify-between">
+          {!wf.projectionsDetached ? (
+            <Chip tone="store">پیش‌بینی از گام ۱ ✓</Chip>
+          ) : (
+            <Chip tone="neutral">ویرایش دستی</Chip>
+          )}
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditingRows((e) => !e)}>
+            <PencilLine className="h-4 w-4" />
+            ویرایش سطرها
+          </Button>
+        </div>
+      )}
+      {editingRows && (
+        <ProjectionsEditor
+          rows={wf.projections ?? []}
+          onChange={(rows) => wf.overrideProjections(rows)}
+        />
+      )}
+    </>
+  );
+
+  return (
+    <SplitLayout
+      title="گام ۳: ارزش‌گذاری جریان نقدی تنزیل‌شده (DCF)"
+      formula="EV = Σ PV(FCFF) + PV(TV) ;  Equity = EV + Cash − Debt − MI − Preferred"
+      whenSuitable="سطرهای پیش‌بینی و WACC را مصرف می‌کند و ارزش بنگاه و ارزش هر سهم را می‌سازد."
+      howToRead="ارزش هر سهم، ارزش حقوق صاحبان سهام تقسیم بر تعداد سهام است. ارزش منفی هم معتبر است (بدهی می‌تواند از ارزش بنگاه بیشتر شود)."
+      input={
+        <>
+          {balance}
+          <div className="flex flex-wrap gap-2">
+            <Chip tone={wf.waccDetached || wf.waccPercent === null ? "neutral" : "store"}>
+              WACC {wf.waccDetached ? "(دستی)" : wf.waccPercent === null ? "(وارد کنید)" : "از گام ۲ ✓"}
+            </Chip>
+          </div>
+          <NumberField label="WACC" suffix="٪" value={wacc} onChange={(v) => v !== undefined && wf.overrideWacc(v)} info="نرخ تنزیل (٪)؛ باید از رشد پایانی حداقل ۰٫۵ واحد درصد بیشتر باشد." min={0} />
+          <NumberField label="رشد پایانی" suffix="٪" value={terminalGrowth} onChange={(v) => setTerminalGrowth(v ?? 0)} min={0} max={200} />
+          <NumberField label="نرخ مالیات" suffix="٪" value={bs.taxRate} onChange={(v) => wf.setBalanceSheet({ taxRate: v ?? 0 })} min={0} max={100} />
+          <NumberField label="تعداد سهام" suffix="سهم" value={bs.sharesOutstanding} onChange={(v) => wf.setBalanceSheet({ sharesOutstanding: v ?? 0 })} min={0} />
+          <div className="grid grid-cols-2 gap-3">
+            <NumberField label="نقد" suffix="ریال" value={bs.cash} onChange={(v) => wf.setBalanceSheet({ cash: v ?? 0 })} min={0} />
+            <NumberField label="بدهی" suffix="ریال" value={bs.debt} onChange={(v) => wf.setBalanceSheet({ debt: v ?? 0 })} min={0} />
+            <NumberField label="منافع اقلیت" suffix="ریال" value={bs.minorityInterest} onChange={(v) => wf.setBalanceSheet({ minorityInterest: v ?? 0 })} min={0} />
+            <NumberField label="سهام ممتاز" suffix="ریال" value={bs.preferredEquity} onChange={(v) => wf.setBalanceSheet({ preferredEquity: v ?? 0 })} min={0} />
+          </div>
+          <NumberField label="قیمت بازار (اختیاری)" suffix="ریال" value={wf.marketPrice ?? undefined} onChange={(v) => wf.setMarketPrice(v ?? null)} min={0} />
+        </>
+      }
+      results={
+        !ready ? (
+          <IncompleteState />
+        ) : query.isPending && !res ? (
+          <ResultSkeleton />
+        ) : query.error ? (
+          <ErrorState error={query.error} />
+        ) : res ? (
+          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+            <Hero
+              label="ارزش هر سهم"
+              value={fmt.number(res.value_per_share)}
+              tone={res.equity_value < 0 ? "negative" : "default"}
+              hint={res.equity_value < 0 ? "ارزش حقوق صاحبان سهام منفی است (بدهی از ارزش بنگاه بیشتر). این نتیجه خطا نیست." : undefined}
+            />
+            <ComponentCards
+              items={[
+                { label: "ارزش بنگاه (EV)", value: fmt.number(res.enterprise_value) },
+                { label: "ارزش سهام", value: fmt.number(res.equity_value) },
+              ]}
+            />
+            <DcfWaterfall res={res} />
+            <TerminalValueBar share={res.terminal_value_share_percent} />
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {["سال", "EBIT", "NOPAT", "استهلاک", "Capex", "ΔNWC", "FCFF", "ضریب تنزیل", "ارزش فعلی"].map((h) => (
+                      <TableHead key={h}>{h}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {res.years.map((r) => (
+                    <TableRow key={r.year}>
+                      <TableCell className="num">{r.year}</TableCell>
+                      <TableCell className="num">{fmt.number(r.ebit)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.nopat)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.depreciation)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.capex)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.delta_nwc)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.fcff)}</TableCell>
+                      <TableCell className="num">{fmt.number(r.discount_factor, { maxFractionDigits: 4 })}</TableCell>
+                      <TableCell className="num">{fmt.number(r.present_value)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <CopyButton getText={() => `Value/share = ${res.value_per_share}`} label="کپی ارزش هر سهم" />
+              <CsvButton
+                filename="dcf-years.csv"
+                getRows={() => [
+                  ["year", "ebit", "nopat", "depreciation", "capex", "delta_nwc", "fcff", "discount_factor", "present_value"],
+                  ...res.years.map((r) => [r.year, r.ebit, r.nopat, r.depreciation, r.capex, r.delta_nwc, r.fcff, r.discount_factor, r.present_value]),
+                ]}
+              />
+            </div>
+          </div>
+        ) : (
+          <EmptyState formula="EV = Σ PV(FCFF) + PV(TV)" whenSuitable="پیش‌بینی از گام ۱ بفرستید یا سطرها را وارد کنید." onLoadSample={() => wf.loadSample()} />
+        )
+      }
+    />
+  );
+}
+
+function TerminalValueBar({ share }: { share: number }) {
+  const fmt = useFormat();
+  const warn = share > 80;
+  return (
+    <Card className="p-3">
+      <div className="mb-1 flex items-center justify-between text-sm">
+        <span className="text-muted-foreground">سهم ارزش انتهایی از بنگاه</span>
+        <span className="num flex items-center gap-1" style={{ color: warn ? "var(--warning)" : undefined }}>
+          {warn && <TriangleAlert className="h-3.5 w-3.5" />}
+          {fmt.percent(share)}
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-accent">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${Math.min(share, 100)}%`, background: warn ? "var(--warning)" : "var(--primary)" }}
+        />
+      </div>
+      {warn && (
+        <p className="mt-2 text-xs text-warning">
+          بخش بزرگی از ارزش به فرضیات دورهٔ پایانی وابسته است؛ این فرضیه را با دقت بررسی کنید.
+        </p>
+      )}
+    </Card>
+  );
+}
