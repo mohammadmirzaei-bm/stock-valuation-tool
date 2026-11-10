@@ -2,7 +2,7 @@ import * as React from "react";
 import { Plus, Trash2, Image as ImageIcon, FlaskConical } from "lucide-react";
 import { SplitLayout } from "@/components/layout/SplitLayout";
 import { NumberField } from "@/components/model/NumberField";
-import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { Hero, ComponentCards, ResultStack } from "@/components/model/ResultParts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import type { ChartInstance } from "@/components/charts/Chart";
 import { postPortfolioOptimize } from "@/api/endpoints";
 import type { PortfolioOptimizeRequest, PortfolioAnalysisResult } from "@/api/types";
 import { useAutoQuery } from "@/hooks/useAutoQuery";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { useFormat } from "@/hooks/useFormat";
 import { usePortfolio } from "@/store/portfolio";
 import { exportChartPng } from "@/lib/png";
@@ -48,21 +49,27 @@ const emptyState = (): OptState => ({
 export function PortfolioOptimizerPage() {
   const fmt = useFormat();
   const handoff = usePortfolio((s) => s.handoff);
+  const clearHandoff = usePortfolio((s) => s.clear);
 
-  const [state, setState] = React.useState<OptState>(() =>
-    handoff
-      ? {
-          names: handoff.assetNames,
-          meanReturnsPercent: handoff.meanReturnsPercent,
-          covariance: handoff.covariance,
-          riskFreeRatePercent: 0,
-          riskAversion: 3,
-          allowShort: false,
-          maxLeverage: 1,
-          frontierPoints: 50,
-        }
-      : emptyState(),
-  );
+  // Like every other page, inputs survive navigation and refresh.
+  const [state, setState] = usePersistentState<OptState>("portfolio-optimize", emptyState());
+
+  // The statistics page hands data over once: apply it over the stored state
+  // (keeping the student's risk settings), then consume it so a later visit
+  // restores the student's own edits instead of re-applying the handoff.
+  // Identity tracking (not a boolean) so a second handoff is applied too.
+  const lastHandoff = React.useRef<typeof handoff>(null);
+  React.useEffect(() => {
+    if (!handoff || handoff === lastHandoff.current) return;
+    lastHandoff.current = handoff;
+    setState((s) => ({
+      ...s,
+      names: [...handoff.assetNames],
+      meanReturnsPercent: [...handoff.meanReturnsPercent],
+      covariance: handoff.covariance.map((r) => [...r]),
+    }));
+    clearHandoff();
+  }, [handoff, setState, clearHandoff]);
 
   const patch = (p: Partial<OptState>) => setState((s) => ({ ...s, ...p }));
   const n = state.names.length;
@@ -236,7 +243,7 @@ export function PortfolioOptimizerPage() {
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <Hero label="بازده سبد کامل" value={fmt.percent(cp?.expected_return_percent ?? 0)} hint={`نوسان: ${fmt.percent(cp?.volatility_percent ?? 0)}`} />
 
             {cp && (
@@ -264,7 +271,7 @@ export function PortfolioOptimizerPage() {
               <WeightBars names={assetLabels} weightsPercent={cp?.risky_weights_percent ?? []} />
               {res.equal_weight && (
                 <p className="text-xs text-muted-foreground">
-                  وزن برابر: بازده {fmt.percent(res.equal_weight.expected_return_percent)}٪، نوسان {fmt.percent(res.equal_weight.volatility_percent)}٪.
+                  وزن برابر: بازده {fmt.percent(res.equal_weight.expected_return_percent)}، نوسان {fmt.percent(res.equal_weight.volatility_percent)}.
                 </p>
               )}
             </Card>
@@ -272,7 +279,7 @@ export function PortfolioOptimizerPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => chartRef.current && exportChartPng(chartRef.current, "portfolio-optimize.png")}>
               <ImageIcon className="h-4 w-4" /> خروجی PNG
             </Button>
-          </div>
+          </ResultStack>
         ) : null
       }
     />

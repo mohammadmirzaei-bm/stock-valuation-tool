@@ -1,19 +1,21 @@
-import * as React from "react";
 import { Plus, Trash2, Send } from "lucide-react";
 import { SplitLayout } from "@/components/layout/SplitLayout";
 import { NumberField } from "@/components/model/NumberField";
-import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { Hero, ComponentCards, ResultStack } from "@/components/model/ResultParts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BoxPlot } from "@/components/charts/BoxPlot";
-import { ErrorState, IncompleteState, ResultSkeleton } from "@/components/model/StateViews";
+import { ErrorState, ResultSkeleton } from "@/components/model/StateViews";
+import { PrerequisiteChecklist } from "@/components/model/PrerequisiteChecklist";
 import { postMultiples } from "@/api/endpoints";
 import type { MultiplesRequest, ImpliedValuationResult, MultipleKind, PeerMultipleInput } from "@/api/types";
 import { useAutoQuery } from "@/hooks/useAutoQuery";
-import { useWorkflow, type FootballRange } from "@/store/workflow";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useWorkflow, type FootballRangeInput } from "@/store/workflow";
 import { useFormat } from "@/hooks/useFormat";
+import { missingPrereqs } from "@/lib/prerequisites";
 import { MULTIPLES_SAMPLE } from "@/lib/samples";
 
 interface KindMeta {
@@ -58,14 +60,16 @@ const INITIAL: MultiplesState = {
 export function MultiplesPage() {
   const fmt = useFormat();
   const wf = useWorkflow();
-  const [state, setState] = React.useState<MultiplesState>(() => ({
+  // Persisted like every other page; the shared balance sheet only seeds the
+  // first visit (stored values win afterwards).
+  const [state, setState] = usePersistentState<MultiplesState>("multiples", {
     ...INITIAL,
     sharesOutstanding: wf.balanceSheet.sharesOutstanding || 0,
     cash: wf.balanceSheet.cash,
     debt: wf.balanceSheet.debt,
     minorityInterest: wf.balanceSheet.minorityInterest,
     preferredEquity: wf.balanceSheet.preferredEquity,
-  }));
+  });
 
   const meta = KINDS[state.kind];
   const patch = (p: Partial<MultiplesState>) => setState((s) => ({ ...s, ...p }));
@@ -78,6 +82,21 @@ export function MultiplesPage() {
     state.peers.length >= 3 &&
     uniqueNames &&
     validPeers.length >= 3;
+
+  // Shares outstanding is the one shared prerequisite (canonically set on the
+  // DCF page); metric and peers are entered right here, so they are local gaps.
+  const missing = missingPrereqs(["shares"], {
+    forecast: null,
+    wacc: null,
+    shares: state.sharesOutstanding,
+    taxRate: null,
+    marketPrice: null,
+  });
+  const local = [
+    ...(state.metric > 0 ? [] : ["شاخص انتخاب‌شده باید بیشتر از صفر باشد."]),
+    ...(validPeers.length >= 3 ? [] : ["دست‌کم ۳ همتا با ضریب مثبت وارد کنید."]),
+    ...(uniqueNames ? [] : ["نام همتاها باید یکتا باشد."]),
+  ];
 
   const peers: PeerMultipleInput[] = state.peers
     .filter((p) => p.name.trim())
@@ -113,7 +132,7 @@ export function MultiplesPage() {
 
   const sendRange = () => {
     if (!res) return;
-    const range: FootballRange = {
+    const range: FootballRangeInput = {
       method: "Multiples",
       low: res.low.value_per_share,
       mid: res.mid.value_per_share,
@@ -145,16 +164,16 @@ export function MultiplesPage() {
           </Tabs>
 
           <div className="grid grid-cols-2 gap-3">
-            <NumberField label={`شاخص: ${meta.metricLabel}`} suffix="ریال" value={state.metric} onChange={(v) => patch({ metric: v ?? 0 })} min={0} />
+            <NumberField label={`شاخص: ${meta.metricLabel}`} suffix={fmt.moneySuffix} value={state.metric} onChange={(v) => patch({ metric: v ?? 0 })} min={0} />
             <NumberField label="تعداد سهام" suffix="سهم" value={state.sharesOutstanding} onChange={(v) => patch({ sharesOutstanding: v ?? 0 })} min={0} />
           </div>
 
           {meta.ev && (
             <div className="grid grid-cols-2 gap-3">
-              <NumberField label="نقد" suffix="ریال" value={state.cash} onChange={(v) => patch({ cash: v ?? 0 })} min={0} />
-              <NumberField label="بدهی" suffix="ریال" value={state.debt} onChange={(v) => patch({ debt: v ?? 0 })} min={0} />
-              <NumberField label="منافع اقلیت" suffix="ریال" value={state.minorityInterest} onChange={(v) => patch({ minorityInterest: v ?? 0 })} min={0} />
-              <NumberField label="سهام ممتاز" suffix="ریال" value={state.preferredEquity} onChange={(v) => patch({ preferredEquity: v ?? 0 })} min={0} />
+              <NumberField label="نقد" suffix={fmt.moneySuffix} value={state.cash} onChange={(v) => patch({ cash: v ?? 0 })} min={0} />
+              <NumberField label="بدهی" suffix={fmt.moneySuffix} value={state.debt} onChange={(v) => patch({ debt: v ?? 0 })} min={0} />
+              <NumberField label="منافع اقلیت" suffix={fmt.moneySuffix} value={state.minorityInterest} onChange={(v) => patch({ minorityInterest: v ?? 0 })} min={0} />
+              <NumberField label="سهام ممتاز" suffix={fmt.moneySuffix} value={state.preferredEquity} onChange={(v) => patch({ preferredEquity: v ?? 0 })} min={0} />
             </div>
           )}
 
@@ -193,13 +212,13 @@ export function MultiplesPage() {
       }
       results={
         !ready ? (
-          <IncompleteState />
+          <PrerequisiteChecklist missing={missing} local={local} />
         ) : query.isPending && !res ? (
           <ResultSkeleton />
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <Hero label={`ارزش هر سهم (میانهٔ ${meta.label})`} value={fmt.number(res.mid.value_per_share)} />
             <ComponentCards
               items={[
@@ -229,7 +248,7 @@ export function MultiplesPage() {
             <Button type="button" size="sm" onClick={sendRange}>
               <Send className="h-4 w-4" /> ارسال بازه به زمین فوتبال
             </Button>
-          </div>
+          </ResultStack>
         ) : null
       }
     />

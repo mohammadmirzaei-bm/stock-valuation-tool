@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "gen:openapi": "python3 scripts/gen_openapi.py",
     "gen:types": "openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
     "gen:api": "npm run gen:openapi && npm run gen:types"
@@ -43,6 +44,7 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.4.8",
     "@testing-library/react": "^16.0.0",

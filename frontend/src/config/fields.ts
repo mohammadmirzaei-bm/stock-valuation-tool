@@ -16,7 +16,7 @@ export interface FieldDef {
   key: string;
   label: string;
   unit: FieldUnit;
-  /** Display suffix; defaults to the unit's natural suffix (% / ریال). */
+  /** Display suffix; defaults to the unit's natural suffix (% for rates). */
   suffix?: string;
   min?: number;
   max?: number;
@@ -30,14 +30,14 @@ export interface FieldDef {
   tooltip: string;
 }
 
-/** Suffix default per unit (overridable per field). */
+/** Suffix default per unit (overridable per field). Money fields take their
+ *  suffix from the settings money unit at render time (see FieldInput), so no
+ *  unit is hardcoded here. */
 export function defaultSuffix(unit: FieldUnit): string | undefined {
   switch (unit) {
     case "rate":
     case "percent-raw":
       return "%";
-    case "money":
-      return "ریال";
     default:
       return undefined;
   }

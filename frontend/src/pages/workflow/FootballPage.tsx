@@ -2,14 +2,15 @@ import * as React from "react";
 import { Plus, Trash2, Image as ImageIcon, Copy } from "lucide-react";
 import { SplitLayout } from "@/components/layout/SplitLayout";
 import { NumberField } from "@/components/model/NumberField";
-import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { Hero, ComponentCards, ResultStack } from "@/components/model/ResultParts";
 import { Chip } from "@/components/common/Chip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FootballFieldChart } from "@/components/charts/FootballField";
-import { EmptyState, ErrorState, IncompleteState, ResultSkeleton } from "@/components/model/StateViews";
+import { EmptyState, ErrorState, ResultSkeleton } from "@/components/model/StateViews";
+import { PrerequisiteChecklist } from "@/components/model/PrerequisiteChecklist";
 import type { ChartInstance } from "@/components/charts/Chart";
 import { postFootballField } from "@/api/endpoints";
 import type { FootballFieldRequest, FootballFieldResult, ValuationRangeInput } from "@/api/types";
@@ -31,6 +32,14 @@ export function FootballPage() {
   const ordered = rows.every((r) => r.low <= r.mid && r.mid <= r.high);
   const ready = rows.length >= 1 && rows.length <= 12 && uniqueMethods && ordered;
 
+  // Ranges are collected on this page (or sent from steps 4/5) and market price
+  // is optional, so nothing here links to another step — only local range rules.
+  const local = [
+    ...(uniqueMethods ? [] : ["نام روش‌ها باید یکتا باشد."]),
+    ...(ordered ? [] : ["برای هر روش کمینه ≤ میانی ≤ بیشینه باشد."]),
+    ...(rows.length <= 12 ? [] : ["حداکثر ۱۲ بازه مجاز است."]),
+  ];
+
   const ranges: ValuationRangeInput[] = rows.map((r) => ({
     method: r.method.trim(),
     low: r.low,
@@ -45,15 +54,14 @@ export function FootballPage() {
   const query = useAutoQuery<FootballFieldResult>("football-field", body, postFootballField, ready);
   const res = query.data;
 
+  // Step 6 is complete once the football-field result renders successfully.
+  const completeStep = useWorkflow((s) => s.completeStep);
+  React.useEffect(() => {
+    if (res) completeStep("football");
+  }, [res, completeStep]);
+
   const addRow = () =>
     wf.upsertRange({ method: `روش ${rows.length + 1}`, low: 0, mid: 0, high: 0, source: "دستی" });
-
-  const editMethod = (original: string, next: string) => {
-    const existing = rows.find((r) => r.method === original);
-    if (!existing) return;
-    wf.removeRange(original);
-    wf.upsertRange({ ...existing, method: next });
-  };
 
   const summaryText = () => {
     if (!res) return "";
@@ -82,7 +90,7 @@ export function FootballPage() {
       howToRead="هر میله بازهٔ یک روش است؛ لوزی مقدار میانی و خط‌چین قیمت بازار. ناحیهٔ شفاف، همپوشانی همهٔ روش‌هاست."
       input={
         <>
-          <NumberField label="قیمت بازار (اختیاری)" suffix="ریال" value={wf.marketPrice ?? undefined} onChange={(v) => wf.setMarketPrice(v ?? null)} min={0} />
+          <NumberField label="قیمت بازار (اختیاری)" suffix={fmt.moneySuffix} value={wf.marketPrice ?? undefined} onChange={(v) => wf.setMarketPrice(v ?? null)} min={0} />
           <div className="text-sm text-muted-foreground">بازه‌ها (۱ تا ۱۲)</div>
 
           {!rows.length && (
@@ -91,25 +99,25 @@ export function FootballPage() {
 
           <div className="space-y-3">
             {rows.map((r) => (
-              <Card key={r.method} className="space-y-2 p-3">
+              <Card key={r.id} className="space-y-2 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <Input
                     value={r.method}
-                    onChange={(e) => editMethod(r.method, e.target.value)}
+                    onChange={(e) => wf.updateRange(r.id, { method: e.target.value })}
                     aria-label="نام روش"
                     className="h-8 max-w-40"
                   />
                   <div className="flex items-center gap-2">
                     {r.source && <Chip tone="source">{r.source}</Chip>}
-                    <Button type="button" variant="ghost" size="icon" aria-label="حذف بازه" onClick={() => wf.removeRange(r.method)}>
+                    <Button type="button" variant="ghost" size="icon" aria-label="حذف بازه" onClick={() => wf.removeRange(r.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <NumberField label="کمینه" value={r.low} onChange={(v) => wf.upsertRange({ ...r, low: v ?? 0 })} compact />
-                  <NumberField label="میانی" value={r.mid} onChange={(v) => wf.upsertRange({ ...r, mid: v ?? 0 })} compact />
-                  <NumberField label="بیشینه" value={r.high} onChange={(v) => wf.upsertRange({ ...r, high: v ?? 0 })} compact />
+                  <NumberField label="کمینه" value={r.low} onChange={(v) => wf.updateRange(r.id, { low: v ?? 0 })} compact />
+                  <NumberField label="میانی" value={r.mid} onChange={(v) => wf.updateRange(r.id, { mid: v ?? 0 })} compact />
+                  <NumberField label="بیشینه" value={r.high} onChange={(v) => wf.updateRange(r.id, { high: v ?? 0 })} compact />
                 </div>
               </Card>
             ))}
@@ -131,13 +139,13 @@ export function FootballPage() {
         rows.length === 0 ? (
           <EmptyState formula="چند بازه جمع کنید تا نمودار ساخته شود." whenSuitable="از گام‌های پیشین بازه بفرستید یا دستی وارد کنید." onLoadSample={() => wf.loadSample()} />
         ) : !ready ? (
-          <IncompleteState />
+          <PrerequisiteChecklist missing={[]} local={local} />
         ) : query.isPending && !res ? (
           <ResultSkeleton />
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <Hero label="بازهٔ کلی ارزش هر سهم" value={`${fmt.number(res.overall_low)} – ${fmt.number(res.overall_high)}`} />
             <ComponentCards
               items={[
@@ -199,7 +207,7 @@ export function FootballPage() {
                 <Copy className="h-4 w-4" /> {copied ? "کپی شد" : "کپی خلاصه"}
               </Button>
             </div>
-          </div>
+          </ResultStack>
         ) : null
       }
     />

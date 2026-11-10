@@ -10,6 +10,21 @@
 
 export type DigitMode = "latin" | "persian";
 
+/** Money-unit choice for currency suffixes (settings-selectable). */
+export type MoneyUnit = "none" | "rial" | "toman";
+
+/** Label (settings UI) and suffix (rendered after an amount) per money unit. */
+export const MONEY_UNITS: Record<MoneyUnit, { label: string; suffix: string }> = {
+  none: { label: "بدون واحد", suffix: "" },
+  rial: { label: "ریال", suffix: "ریال" },
+  toman: { label: "تومان", suffix: "تومان" },
+};
+
+/** The suffix for a money unit (empty when no unit is selected). */
+export function moneySuffix(unit: MoneyUnit): string {
+  return MONEY_UNITS[unit].suffix;
+}
+
 const PERSIAN_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 
 /** Convert ASCII digits in a string to Persian digits (keeps , . % − etc). */
@@ -25,6 +40,8 @@ export interface NumOptions {
   digits?: DigitMode;
   minFractionDigits?: number;
   maxFractionDigits?: number;
+  /** Money unit appended by formatCurrency (default: no unit). */
+  moneyUnit?: MoneyUnit;
 }
 
 /** Grouped decimal formatting with a fixed digit mode. Null-safe. */
@@ -55,12 +72,18 @@ export function formatPercent(
   return `${formatNumber(percentValue, { digits, maxFractionDigits })}%`;
 }
 
-/** Format a currency amount with the ریال unit suffix (spec unit label). */
+/**
+ * Format a currency amount, appending the selected money-unit suffix. The unit
+ * is a settings choice — "none" (default, no suffix), "rial" or "toman" — and is
+ * never hardcoded here.
+ */
 export function formatCurrency(value: number | null | undefined, opts: NumOptions = {}): string {
   if (value === null || value === undefined || !Number.isFinite(value)) {
     return "—";
   }
-  return `${formatNumber(value, opts)} ریال`;
+  const num = formatNumber(value, opts);
+  const suffix = moneySuffix(opts.moneyUnit ?? "none");
+  return suffix ? `${num} ${suffix}` : num;
 }
 
 /** A signed number, used for upside/downside columns. */

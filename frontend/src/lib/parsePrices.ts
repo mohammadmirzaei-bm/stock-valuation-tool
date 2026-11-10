@@ -15,6 +15,8 @@ export interface ParsedSeries {
 export interface ParseResult {
   series: ParsedSeries[];
   error?: string;
+  /** Data rows skipped because they were ragged or carried a non-numeric cell. */
+  droppedRows: number;
 }
 
 function splitRow(line: string, delimiter: string): string[] {
@@ -43,12 +45,12 @@ export function parsePriceGrid(text: string): ParseResult {
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
-  if (lines.length < 2) return { series: [], error: "حداقل یک سطر نام و یک سطر قیمت لازم است." };
+  if (lines.length < 2) return { series: [], error: "حداقل یک سطر نام و یک سطر قیمت لازم است.", droppedRows: 0 };
 
   const delimiter = detectDelimiter(lines);
   const header = splitRow(lines[0], delimiter);
   const nameCount = header.length;
-  if (nameCount < 1) return { series: [], error: "سطر اول باید نام دارایی‌ها را داشته باشد." };
+  if (nameCount < 1) return { series: [], error: "سطر اول باید نام دارایی‌ها را داشته باشد.", droppedRows: 0 };
 
   const dataRows = lines.slice(1).map((l) => splitRow(l, delimiter));
 
@@ -62,7 +64,11 @@ export function parsePriceGrid(text: string): ParseResult {
   });
 
   if (aligned.length < 2) {
-    return { series: [], error: "ستون‌ها هم‌تراز نیستند یا کمترین تعداد سطر معتبر (۲) رعایت نشده است." };
+    return {
+      series: [],
+      error: "ستون‌ها هم‌تراز نیستند یا کمترین تعداد سطر معتبر (۲) رعایت نشده است.",
+      droppedRows: dataRows.length - aligned.length,
+    };
   }
 
   const series: ParsedSeries[] = header.map((rawName, col) => {
@@ -71,12 +77,14 @@ export function parsePriceGrid(text: string): ParseResult {
     return { name, prices };
   });
 
+  const droppedRows = dataRows.length - aligned.length;
+
   // Prices must be positive for the backend.
   const anyNonPositive = series.some((s) => s.prices.some((p) => p <= 0));
-  if (anyNonPositive) return { series: [], error: "همهٔ قیمت‌ها باید مثبت باشند." };
+  if (anyNonPositive) return { series: [], error: "همهٔ قیمت‌ها باید مثبت باشند.", droppedRows };
 
   const uniqueNames = new Set(series.map((s) => s.name)).size === series.length;
-  if (!uniqueNames) return { series: [], error: "نام دارایی‌ها باید یکتا باشد." };
+  if (!uniqueNames) return { series: [], error: "نام دارایی‌ها باید یکتا باشد.", droppedRows };
 
-  return { series };
+  return { series, droppedRows };
 }

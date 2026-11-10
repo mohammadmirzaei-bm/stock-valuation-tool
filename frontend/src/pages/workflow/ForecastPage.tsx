@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Sparkles, Send } from "lucide-react";
 import { SplitLayout } from "@/components/layout/SplitLayout";
+import { ResultStack } from "@/components/model/ResultParts";
 import { NumberField } from "@/components/model/NumberField";
 import { Segmented } from "@/components/common/Segmented";
 import { Slider } from "@/components/ui/slider";
@@ -51,6 +52,12 @@ export function ForecastPage() {
   const [form, setForm] = usePersistentState<ForecastSample>("forecast", makeSample());
   const [sent, setSent] = React.useState(false);
 
+  // Editing any input after "Send to DCF" invalidates the confirmation: the
+  // rows in the store no longer match what is on screen.
+  React.useEffect(() => {
+    setSent(false);
+  }, [form]);
+
   const setYears = (years: number) =>
     setForm((f) => ({ ...f, years, drivers: Object.fromEntries(Object.entries(f.drivers).map(([k, d]) => [k, syncYears(d as DriverInput, years)])) }) as ForecastSample);
 
@@ -96,7 +103,7 @@ export function ForecastPage() {
             <Sparkles className="h-4 w-4" />
             مقادیر نمونه
           </Button>
-          <NumberField label="درآمد پایه" suffix="ریال" value={form.base_revenue} onChange={(v) => setForm((f) => ({ ...f, base_revenue: v ?? 0 }))} info="آخرین درآمد تاریخی (مثبت)." min={0} />
+          <NumberField label="درآمد پایه" suffix={fmt.moneySuffix} value={form.base_revenue} onChange={(v) => setForm((f) => ({ ...f, base_revenue: v ?? 0 }))} info="آخرین درآمد تاریخی (مثبت)." min={0} />
           <div className="grid gap-1.5">
             <Label>
               تعداد سال‌ها: <span className="num">{fmt.number(form.years)}</span>
@@ -153,7 +160,7 @@ export function ForecastPage() {
             <ErrorState error={query.error} />
           </div>
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -201,7 +208,7 @@ export function ForecastPage() {
               </Button>
               {sent && <span className="mr-3 text-xs text-positive">سطرها به گام ۳ ارسال شد ✓</span>}
             </Card>
-          </div>
+          </ResultStack>
         ) : (
           <EmptyState formula="Revenueₜ = Revenueₜ₋₁ × (1 + g)" whenSuitable="محرک‌ها را پر کنید." onLoadSample={() => setForm(makeSample())} />
         )

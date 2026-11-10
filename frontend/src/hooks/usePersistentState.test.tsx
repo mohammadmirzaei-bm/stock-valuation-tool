@@ -51,4 +51,14 @@ describe("usePersistentState — reload survival", () => {
     });
     expect(JSON.parse(localStorage.getItem("sv-form:counter")!)).toBe(5);
   });
+
+  it("flushes the last edit on unmount inside the debounce window", () => {
+    const { result, unmount } = renderHook(() => usePersistentState<number>("quick-nav", 0));
+    act(() => {
+      result.current[1](42);
+    });
+    // Navigate away before the 250ms debounce fires.
+    unmount();
+    expect(JSON.parse(localStorage.getItem("sv-form:quick-nav")!)).toBe(42);
+  });
 });

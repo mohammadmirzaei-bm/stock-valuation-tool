@@ -38,12 +38,20 @@ export interface BalanceSheet {
 
 /** A football-field range plus where it came from (for the source chips). */
 export interface FootballRange {
+  /** Stable identity so React keys never change while the method name is edited. */
+  id: string;
   method: string;
   low: number;
   mid: number;
   high: number;
   source?: string;
 }
+
+/** What callers hand to {@link upsertRange}; the store assigns the id. */
+export type FootballRangeInput = Omit<FootballRange, "id">;
+
+let rangeSeq = 0;
+const newRangeId = () => `rng-${Date.now().toString(36)}-${(rangeSeq++).toString(36)}`;
 
 export type StepId =
   | "forecast"
@@ -85,8 +93,9 @@ interface WorkflowState {
   setBalanceSheet: (patch: Partial<BalanceSheet>) => void;
   setMarketPrice: (value: number | null) => void;
 
-  upsertRange: (range: FootballRange) => void;
-  removeRange: (method: string) => void;
+  upsertRange: (range: FootballRangeInput) => void;
+  updateRange: (id: string, patch: Partial<FootballRangeInput>) => void;
+  removeRange: (id: string) => void;
 
   completeStep: (step: StepId) => void;
   loadSample: () => void;
@@ -142,10 +151,21 @@ export const useWorkflow = create<WorkflowState>()(
       setMarketPrice: (value) => set({ marketPrice: value }),
 
       upsertRange: (range) => {
-        const others = get().ranges.filter((r) => r.method !== range.method);
-        set({ ranges: [...others, range] });
+        const ranges = get().ranges;
+        const idx = ranges.findIndex((r) => r.method === range.method);
+        if (idx >= 0) {
+          // Re-sending an existing method updates it in place (same id, same
+          // position) instead of moving it to the end.
+          const next = ranges.slice();
+          next[idx] = { ...next[idx], ...range, id: next[idx].id };
+          set({ ranges: next });
+        } else {
+          set({ ranges: [...ranges, { ...range, id: newRangeId() }] });
+        }
       },
-      removeRange: (method) => set({ ranges: get().ranges.filter((r) => r.method !== method) }),
+      updateRange: (id, patch) =>
+        set({ ranges: get().ranges.map((r) => (r.id === id ? { ...r, ...patch } : r)) }),
+      removeRange: (id) => set({ ranges: get().ranges.filter((r) => r.id !== id) }),
 
       completeStep: (step) => set({ completed: { ...get().completed, [step]: true } }),
 
@@ -165,7 +185,7 @@ export const useWorkflow = create<WorkflowState>()(
             taxRate: BALANCE_SHEET_SAMPLE.tax_rate,
           },
           marketPrice: FOOTBALL_SAMPLE.market_price,
-          ranges: FOOTBALL_SAMPLE.ranges.map((r) => ({ ...r, source: "نمونه" })),
+          ranges: FOOTBALL_SAMPLE.ranges.map((r) => ({ ...r, id: newRangeId(), source: "نمونه" })),
           completed: { ...emptyCompleted(), forecast: true, wacc: true, dcf: true },
         }),
 

@@ -1,7 +1,7 @@
 import * as React from "react";
-import { NavLink, Link } from "react-router-dom";
+import { NavLink, Link, useLocation } from "react-router-dom";
 import { Home as HomeIcon, GitBranch, Layers, PieChart } from "lucide-react";
-import { WORKFLOW_STEPS, EQUITY_GROUP, PORTFOLIO_GROUP } from "@/config/models";
+import { WORKFLOW_STEPS, EQUITY_GROUP, PORTFOLIO_GROUP, ANALYSIS_TABS } from "@/config/models";
 import { cn } from "@/lib/utils";
 
 interface SectionProps {
@@ -35,6 +35,9 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
  * drawer.
  */
 export function SidebarNav({ compact = false }: { compact?: boolean }) {
+  const location = useLocation();
+  // Step 4 hosts three analyses as tabs; the active tab comes from ?tab=.
+  const currentTab = new URLSearchParams(location.search).get("tab") ?? "scenarios";
   return (
     <div className="flex h-full flex-col overflow-y-auto p-3">
       <Link to="/" className={cn(linkClass({ isActive: false }), "mb-2")} aria-label="خانه">
@@ -44,17 +47,37 @@ export function SidebarNav({ compact = false }: { compact?: boolean }) {
 
       <Section icon={<GitBranch className="h-4 w-4" />} title="گردش کار" compact={compact}>
         {WORKFLOW_STEPS.map((s) => (
-          <NavLink key={s.id} to={s.path} className={linkClass} title={s.label}>
-            <span className="num flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px]">
-              {s.step}
-            </span>
-            {!compact && (
-              <span className="truncate">
-                {s.label}
-                {s.optional && <span className="mr-1 text-[10px] text-muted-foreground">(اختیاری)</span>}
+          <React.Fragment key={s.id}>
+            <NavLink to={s.path} className={linkClass} title={s.label}>
+              <span className="num flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent text-[11px]">
+                {s.step}
               </span>
+              {!compact && (
+                <span className="truncate">
+                  {s.label}
+                  {s.optional && <span className="mr-1 text-[10px] text-muted-foreground">(اختیاری)</span>}
+                </span>
+              )}
+            </NavLink>
+            {s.id === "analyses" && !compact && (
+              <div className="mr-5 space-y-0.5 border-r border-border pr-2">
+                {ANALYSIS_TABS.map((t) => (
+                  <Link
+                    key={t.id}
+                    to={t.path}
+                    title={t.label}
+                    className={cn(
+                      linkClass({ isActive: location.pathname === "/analyses" && currentTab === t.id }),
+                      "min-h-8 py-1 text-xs",
+                    )}
+                  >
+                    <span className="h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+                    <span className="truncate">{t.label}</span>
+                  </Link>
+                ))}
+              </div>
             )}
-          </NavLink>
+          </React.Fragment>
         ))}
       </Section>
 

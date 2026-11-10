@@ -2,31 +2,74 @@ import * as React from "react";
 import { useWatch, type Control } from "react-hook-form";
 import { ModelPage } from "@/components/model/ModelPage";
 import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { InsightCallout } from "@/components/model/InsightCallout";
 import { CopyButton } from "@/components/common/ExportButtons";
 import { Badge } from "@/components/ui/badge";
 import { BarSeriesChart, LineChart } from "@/components/charts/Basic";
+import { SecurityMarketLine, type SmlPoint } from "@/components/charts/SecurityMarketLine";
+import { chartColors } from "@/components/charts/theme";
 import { FieldInput } from "@/components/model/FieldInput";
 import { EQUITY_META } from "@/config/models";
 import { F } from "@/config/fields";
 import { useFormat, type FormatApi } from "@/hooks/useFormat";
+import { useAutoQuery } from "@/hooks/useAutoQuery";
+import { toWire } from "@/lib/units";
 import type { FormValues } from "@/lib/request";
+import type { ValidationOptions } from "@/lib/validation";
+import type {
+  CapmResult,
+  DividendProjectionRequest,
+  DividendProjectionResult,
+  SupernormalScheduleRow,
+} from "@/api/types";
 import { pegLevelView, toneSurface, toneText } from "@/lib/semantics";
 import { cn } from "@/lib/utils";
 import * as E from "@/api/endpoints";
 
-type AnyRes = Record<string, any>;
-type ResultFn = (res: AnyRes, values: FormValues, fmt: FormatApi) => React.ReactNode;
-
+/**
+ * One registry row as {@link EquityPage} consumes it: the result type is erased
+ * because the page only forwards it to the matching `render`. Callers never
+ * write an entry in this shape — they call {@link defineEntry}, which keeps the
+ * endpoint's generated request/result types on `result`/`actions`.
+ */
 interface Entry {
   endpoint: string;
-  call: (body: any, signal?: AbortSignal) => Promise<AnyRes>;
+  call: (body: unknown, signal?: AbortSignal) => Promise<unknown>;
   sample: FormValues;
-  result: ResultFn;
-  validation?: import("@/lib/validation").ValidationOptions;
+  render: (res: unknown, values: FormValues, fmt: FormatApi) => React.ReactNode;
+  validation?: ValidationOptions;
   buildBody?: (values: FormValues) => unknown;
   inputExtras?: (args: { control: Control<FormValues>; values: FormValues }) => React.ReactNode;
-  actions?: (res: AnyRes, fmt: FormatApi) => React.ReactNode;
+  actions?: (res: unknown, fmt: FormatApi) => React.ReactNode;
   howToRead?: string;
+}
+
+/** An entry authored against one endpoint, so `res` is its real result type. */
+interface EntryConfig<Req, Res> extends Omit<Entry, "call" | "render" | "actions"> {
+  call: (body: Req, signal?: AbortSignal) => Promise<Res>;
+  result: (res: Res, values: FormValues, fmt: FormatApi) => React.ReactNode;
+  actions?: (res: Res, fmt: FormatApi) => React.ReactNode;
+}
+
+/**
+ * Type an entry from the endpoint function itself: `Req`/`Res` are inferred from
+ * `call`, so every `result`/`actions` body is checked against the generated
+ * request/result types. The two casts below are the only place the result type
+ * is erased, and they are safe because the route picks `render` from the same
+ * entry that produced the response.
+ */
+function defineEntry<Req, Res>(cfg: EntryConfig<Req, Res>): Entry {
+  return {
+    endpoint: cfg.endpoint,
+    call: (body, signal) => cfg.call(body as Req, signal),
+    sample: cfg.sample,
+    render: (res, values, fmt) => cfg.result(res as Res, values, fmt),
+    validation: cfg.validation,
+    buildBody: cfg.buildBody,
+    inputExtras: cfg.inputExtras,
+    actions: cfg.actions ? (res, fmt) => cfg.actions!(res as Res, fmt) : undefined,
+    howToRead: cfg.howToRead,
+  };
 }
 
 /** Per-year growth-rate inputs for the supernormal model. */
@@ -49,8 +92,59 @@ function GrowthRateList({ control }: { control: Control<FormValues> }) {
 
 const copy = (label: string, text: () => string) => <CopyButton getText={text} label={label} />;
 
-const ENTRIES: Record<string, Entry> = {
-  "single-period": {
+/** SML chart heading (spec term: security market line). */
+export const SML_LABEL = "خط بازار اوراق بهادار (SML)";
+
+type CapmSmlFields = Pick<
+  CapmResult,
+  "beta" | "risk_free_rate_percent" | "market_return_percent" | "required_return_percent"
+>;
+
+/** The three SML points on a numeric beta axis: β=0 (r_f), β=1 (r_m), β=stock (r). */
+export function capmSmlPoints(res: CapmSmlFields, marketReturnFallback: number): SmlPoint[] {
+  return [
+    { beta: 0, ret: res.risk_free_rate_percent, label: "r_f" },
+    { beta: 1, ret: res.market_return_percent ?? marketReturnFallback, label: "r_m" },
+    { beta: res.beta, ret: res.required_return_percent, label: "سهم" },
+  ];
+}
+
+/**
+ * Body for the Gordon companion dividend chart: the same D₀ and g the student
+ * typed, projected 10 years. The growth rate goes through the shared unit layer
+ * (percent → decimal), never a hand-written ÷100. Null until both inputs exist.
+ */
+export function gordonDividendBody(
+  d0: number | undefined,
+  gPercent: number | undefined,
+): DividendProjectionRequest | null {
+  if (d0 === undefined || gPercent === undefined) return null;
+  return { d0, g: toWire(F.g.unit, gPercent), periods: 10 };
+}
+
+/** Gordon companion: the 10-year dividend path with the same D₀ and g. */
+function GordonDividendChart({ d0, gPercent, fmt }: { d0?: number; gPercent?: number; fmt: FormatApi }) {
+  const body = React.useMemo(() => gordonDividendBody(d0, gPercent), [d0, gPercent]);
+  const query = useAutoQuery<DividendProjectionResult>("gordon-dividends", body, E.postDividendProjection, body !== null);
+  const divs = query.data?.dividends ?? [];
+  if (!body || divs.length === 0) return null;
+  return (
+    <div className="card-surface p-3">
+      <div className="mb-1 text-sm font-medium text-foreground">مسیر سود تقسیمی ۱۰ ساله</div>
+      <p className="mb-2 text-xs text-muted-foreground">با همان D₀ و gِ مدل گوردون؛ رشد سالانهٔ سود تقسیمی را نشان می‌دهد.</p>
+      <LineChart
+        categories={divs.map((_, i) => fmt.number(i + 1))}
+        series={[{ name: "Dₜ", data: divs }]}
+        yName="سود تقسیمی"
+        height={240}
+        summary={`سود تقسیمی ۱۰ سال آینده با رشد ثابت: از ${fmt.number(divs[0])} تا ${fmt.number(divs[divs.length - 1])}.`}
+      />
+    </div>
+  );
+}
+
+export const ENTRIES: Record<string, Entry> = {
+  "single-period": defineEntry({
     endpoint: "single-period",
     call: E.postSinglePeriod,
     sample: { d1: 1.0, p1: 50.0, r: 10 },
@@ -61,8 +155,8 @@ const ENTRIES: Record<string, Entry> = {
           categories={["ترکیب P₀"]}
           stacked
           series={[
-            { name: "ارزش فعلی سود", data: [res.pv_dividend], color: "var(--primary)" },
-            { name: "ارزش فعلی قیمت", data: [res.pv_terminal_price], color: "var(--warning)" },
+            { name: "ارزش فعلی سود", data: [res.pv_dividend], color: chartColors().primary },
+            { name: "ارزش فعلی قیمت", data: [res.pv_terminal_price], color: chartColors().warning },
           ]}
           valueLabel={(x) => fmt.number(x as number)}
           summary={`تفکیک P₀ به سود (${fmt.number(res.pv_dividend)}) و قیمت پایانی (${fmt.number(res.pv_terminal_price)}).`}
@@ -70,8 +164,8 @@ const ENTRIES: Record<string, Entry> = {
       </>
     ),
     actions: (res, fmt) => copy("کپی P₀", () => `P₀ = ${fmt.number(res.p0)}`),
-  },
-  "zero-growth": {
+  }),
+  "zero-growth": defineEntry({
     endpoint: "zero-growth",
     call: E.postZeroGrowth,
     sample: { d: 2.0, r: 8 },
@@ -82,22 +176,22 @@ const ENTRIES: Record<string, Entry> = {
       </>
     ),
     actions: (res, fmt) => copy("کپی قیمت", () => `P = ${fmt.number(res.price)}`),
-  },
-  "annual-dividend-yield": {
+  }),
+  "annual-dividend-yield": defineEntry({
     endpoint: "annual-dividend-yield",
     call: E.postAnnualDividendYield,
     sample: { dividend: 2.25, price: 25.0 },
     result: (res, _v, fmt) => <Hero label="بازده سالانه سود تقسیمی" value={fmt.percent(res.dividend_yield_percent)} />,
     actions: (res, fmt) => copy("کپی بازده", () => `${fmt.percent(res.dividend_yield_percent)}`),
-  },
-  gordon: {
+  }),
+  gordon: defineEntry({
     endpoint: "gordon",
     call: E.postGordon,
     sample: { d0: 1.5, g: 5, r: 12 },
     validation: { spread: [{ higher: "r", lower: "g" }] },
     howToRead:
       "قیمت، ارزش آتی سودهای تقسیمی با رشد ثابت است. مجموع بازده سود تقسیمی و بازده رشد سرمایه با نرخ بازده مورد انتظار برابر می‌شود.",
-    result: (res, _v, fmt) => (
+    result: (res, values, fmt) => (
       <>
         <Hero label="قیمت سهام (P)" value={fmt.number(res.price)} />
         <ComponentCards
@@ -107,11 +201,12 @@ const ENTRIES: Record<string, Entry> = {
             { label: "D₁", value: fmt.number(res.d1) },
           ]}
         />
+        <GordonDividendChart d0={values.d0} gPercent={values.g} fmt={fmt} />
       </>
     ),
     actions: (res) => copy("کپی قیمت", () => `P = ${res.price}`),
-  },
-  supernormal: {
+  }),
+  supernormal: defineEntry({
     endpoint: "supernormal",
     call: E.postSupernormal,
     sample: { d0: 1.0, years: 3, g_constant: 5, r: 12, growth_0: 25, growth_1: 20, growth_2: 15 },
@@ -134,8 +229,8 @@ const ENTRIES: Record<string, Entry> = {
           categories={["ترکیب P₀"]}
           stacked
           series={[
-            { name: "PV سودها", data: [res.pv_dividends_total], color: "var(--primary)" },
-            { name: "PV قیمت پایانی", data: [res.pv_p_terminal], color: "var(--warning)" },
+            { name: "PV سودها", data: [res.pv_dividends_total], color: chartColors().primary },
+            { name: "PV قیمت پایانی", data: [res.pv_p_terminal], color: chartColors().warning },
           ]}
           valueLabel={(x) => fmt.number(x as number)}
         />
@@ -143,8 +238,8 @@ const ENTRIES: Record<string, Entry> = {
       </>
     ),
     actions: (res) => copy("کپی P₀", () => `P₀ = ${res.p0}`),
-  },
-  "dividend-projection": {
+  }),
+  "dividend-projection": defineEntry({
     endpoint: "dividend-projection",
     call: E.postDividendProjection,
     sample: { d0: 1.0, g: 5, periods: 10 },
@@ -154,7 +249,7 @@ const ENTRIES: Record<string, Entry> = {
         <>
           <Hero label="آخرین سود تقسیمی پیش‌بینی‌شده" value={fmt.number(divs[divs.length - 1])} />
           <LineChart
-            categories={divs.map((_, i) => `${i + 1}`)}
+            categories={divs.map((_, i) => fmt.number(i + 1))}
             series={[{ name: "Dₜ", data: divs }]}
             yName="سود تقسیمی"
             summary="نمودار رشد سود تقسیمی در دوره‌های آینده."
@@ -162,8 +257,8 @@ const ENTRIES: Record<string, Entry> = {
         </>
       );
     },
-  },
-  "expected-return": {
+  }),
+  "expected-return": defineEntry({
     endpoint: "expected-return",
     call: E.postExpectedReturn,
     sample: { d1: 1.0, p0: 20.0, g: 10 },
@@ -174,16 +269,16 @@ const ENTRIES: Record<string, Entry> = {
           categories={["بازده کل"]}
           stacked
           series={[
-            { name: "بازده سود تقسیمی", data: [res.dividend_yield_percent], color: "var(--primary)" },
-            { name: "بازده رشد سرمایه", data: [res.capital_gains_yield_percent], color: "var(--warning)" },
+            { name: "بازده سود تقسیمی", data: [res.dividend_yield_percent], color: chartColors().primary },
+            { name: "بازده رشد سرمایه", data: [res.capital_gains_yield_percent], color: chartColors().warning },
           ]}
           valueLabel={(x) => fmt.percent(x as number)}
         />
       </>
     ),
     actions: (res, fmt) => copy("کپی بازده", () => fmt.percent(res.total_percent)),
-  },
-  capm: {
+  }),
+  capm: defineEntry({
     endpoint: "capm",
     call: E.postCapm,
     sample: { risk_free_rate: 4, beta: 1.5, market_return: 10 },
@@ -197,22 +292,17 @@ const ENTRIES: Record<string, Entry> = {
             { label: "صرف ریسک سهام", value: fmt.percent(res.risk_premium_percent) },
           ]}
         />
-        <div className="text-sm text-muted-foreground">خط امنیتی بازار (SML)</div>
-        <LineChart
-          categories={["r_f (β=0)", "r_m (β=1)", `سهم (β=${fmt.number(values.beta)})`]}
-          series={[
-            {
-              name: "بازده",
-              data: [res.risk_free_rate_percent, res.market_return_percent ?? values.market_return, res.required_return_percent],
-            },
-          ]}
-          yName="بازده (٪)"
-          summary={`SML: نرخ بدون ریسک ${fmt.percent(res.risk_free_rate_percent)}، بازده بازار ${fmt.percent(values.market_return)}، بازده سهم ${fmt.percent(res.required_return_percent)}.`}
-        />
+        <div className="card-surface p-3">
+          <div className="mb-2 text-sm font-medium text-foreground">{SML_LABEL}</div>
+          <SecurityMarketLine
+            points={capmSmlPoints(res, values.market_return ?? 0)}
+            summary={`SML: نرخ بدون ریسک ${fmt.percent(res.risk_free_rate_percent)}، بازده بازار ${fmt.percent(res.market_return_percent ?? values.market_return)}، بازده سهم ${fmt.percent(res.required_return_percent)}.`}
+          />
+        </div>
       </>
     ),
-  },
-  "preferred-stock": {
+  }),
+  "preferred-stock": defineEntry({
     endpoint: "preferred-stock",
     call: E.postPreferredStock,
     sample: { d: 2.25, r: 9 },
@@ -223,8 +313,8 @@ const ENTRIES: Record<string, Entry> = {
       </>
     ),
     actions: (res, fmt) => copy("کپی قیمت", () => fmt.number(res.price)),
-  },
-  "risk-premium": {
+  }),
+  "risk-premium": defineEntry({
     endpoint: "risk-premium",
     call: E.postRiskPremium,
     sample: { required_return: 9, bond_rate_percent: 8 },
@@ -242,8 +332,8 @@ const ENTRIES: Record<string, Entry> = {
         />
       </>
     ),
-  },
-  "growth-opportunities": {
+  }),
+  "growth-opportunities": defineEntry({
     endpoint: "growth-opportunities",
     call: E.postGrowthOpportunities,
     sample: { eps: 3.0, r: 10, npvgo: 5.0 },
@@ -255,30 +345,36 @@ const ENTRIES: Record<string, Entry> = {
           categories={["ترکیب ارزش"]}
           stacked
           series={[
-            { name: "ارزش بدون رشد", data: [res.no_growth_value], color: "var(--primary)" },
-            { name: "NPVGO", data: [res.npvgo], color: "var(--positive)" },
+            { name: "ارزش بدون رشد", data: [res.no_growth_value], color: chartColors().primary },
+            { name: "NPVGO", data: [res.npvgo], color: chartColors().positive },
           ]}
           valueLabel={(x) => fmt.number(x as number)}
         />
       </>
     ),
-  },
-  "sustainable-growth": {
+  }),
+  "sustainable-growth": defineEntry({
     endpoint: "sustainable-growth",
     call: E.postSustainableGrowth,
     sample: { eps: 5.0, r: 12, roe: 15, retention_ratio: 40 },
     validation: { spread: [{ higher: "r", lower: "retention_ratio" }] },
     result: (res, _v, fmt) => {
-      const curve: any[] = res.retention_curve ?? [];
+      const curve = res.retention_curve ?? [];
       return (
         <>
           <Hero label="قیمت سهام (P)" value={fmt.number(res.price)} />
-          <div className="flex items-center gap-2">
-            <Badge variant={res.growth_creates_value ? "positive" : "negative"}>
-              {res.growth_creates_value ? "رشد ارزش‌آفرین است" : "رشد ارزش‌ساز نیست"}
-            </Badge>
+          <div className="space-y-2">
+            <div className="flex">
+              <Badge variant={res.growth_creates_value ? "positive" : "negative"}>
+                {res.growth_creates_value ? "رشد ارزش‌آفرین است" : "رشد ارزش‌ساز نیست"}
+              </Badge>
+            </div>
             {!res.growth_creates_value && (
-              <span className="text-xs text-warning">ROE کمتر از بازده مورد انتظار: نگهداری سود ارزش را می‌کاهد.</span>
+              <InsightCallout
+                tone="warning"
+                title="ROE کمتر از بازده مورد انتظار است"
+                explanation="در این حالت نگهداری سود به‌جای افزودن به ارزش، آن را می‌کاهد."
+              />
             )}
           </div>
           <ComponentCards
@@ -299,8 +395,8 @@ const ENTRIES: Record<string, Entry> = {
         </>
       );
     },
-  },
-  peg: {
+  }),
+  peg: defineEntry({
     endpoint: "peg",
     call: E.postPeg,
     sample: { pe_ratio: 15.0, growth_rate_percent: 10 },
@@ -317,11 +413,11 @@ const ENTRIES: Record<string, Entry> = {
       );
     },
     actions: (res, fmt) => copy("کپی PEG", () => fmt.number(res.peg)),
-  },
+  }),
 };
 
 /** Supernormal schedule table (terminal row highlighted). */
-function ScheduleTable({ rows, fmt }: { rows: any[] | undefined; fmt: FormatApi }) {
+function ScheduleTable({ rows, fmt }: { rows: SupernormalScheduleRow[] | null | undefined; fmt: FormatApi }) {
   if (!rows?.length) return null;
   return (
     <div className="overflow-x-auto rounded-md border border-border">
@@ -357,7 +453,7 @@ export function EquityPage({ id }: { id: string }) {
     return <div className="text-muted-foreground">مدل «{id}» یافت نشد.</div>;
   }
   return (
-    <ModelPage<AnyRes>
+    <ModelPage<unknown>
       pageKey={id}
       title={meta.title}
       formula={meta.formula}
@@ -370,7 +466,7 @@ export function EquityPage({ id }: { id: string }) {
       validation={entry.validation}
       buildBody={entry.buildBody}
       inputExtras={entry.inputExtras ? (v) => entry.inputExtras!({ control: v.control, values: v.values }) : undefined}
-      renderResult={(res, values) => entry.result(res, values, fmt)}
+      renderResult={(res, values) => entry.render(res, values, fmt)}
       renderActions={entry.actions ? (res) => entry.actions!(res, fmt) : undefined}
     />
   );

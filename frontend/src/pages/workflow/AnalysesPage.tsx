@@ -1,7 +1,8 @@
 import * as React from "react";
+import { useSearchParams } from "react-router-dom";
 import { Copy, Send, Plus, Trash2 } from "lucide-react";
 import { NumberField } from "@/components/model/NumberField";
-import { Hero, ComponentCards } from "@/components/model/ResultParts";
+import { Hero, ComponentCards, ResultStack, type CardItem } from "@/components/model/ResultParts";
 import { Chip } from "@/components/common/Chip";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ProjectionsEditor } from "@/components/model/ProjectionsEditor";
 import { Heatmap } from "@/components/charts/Heatmap";
 import { BarSeriesChart } from "@/components/charts/Basic";
-import { ErrorState, IncompleteState, ResultSkeleton } from "@/components/model/StateViews";
+import { ErrorState, ResultSkeleton } from "@/components/model/StateViews";
+import { PrerequisiteChecklist } from "@/components/model/PrerequisiteChecklist";
 import { postDcfScenarios, postDcfSensitivity, postReverseDcf } from "@/api/endpoints";
 import type {
   DcfScenarioRequest, DcfScenarioResult, DcfSensitivityRequest, DcfSensitivityResult,
@@ -18,10 +20,13 @@ import type {
 } from "@/api/types";
 import { useAutoQuery } from "@/hooks/useAutoQuery";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import { useWorkflow, type FootballRange } from "@/store/workflow";
-import { useFormat } from "@/hooks/useFormat";
+import { useWorkflow, type FootballRangeInput } from "@/store/workflow";
+import { useFormat, type FormatApi } from "@/hooks/useFormat";
 import { MIN_SPREAD_PP } from "@/lib/validation";
+import { missingPrereqs, type PrereqKind } from "@/lib/prerequisites";
+import { buildDcfBase } from "@/lib/dcfBase";
 import { chartColors } from "@/components/charts/theme";
+import { ANALYSIS_TABS } from "@/config/models";
 
 function projectionsValid(rows: CashFlowProjectionInput[]) {
   return rows.length >= 1 && rows.length <= 50;
@@ -30,6 +35,24 @@ function projectionsValid(rows: CashFlowProjectionInput[]) {
 /** Sum of scenario probabilities in percent. */
 function probTotal(pcts: number[]): number {
   return pcts.reduce((a, b) => a + (b || 0), 0);
+}
+
+/**
+ * The two upside cards are optional: the backend returns them as null (not
+ * undefined) when no market price was supplied, so they must be hidden on null.
+ */
+export function scenarioUpsideCards(
+  res: Pick<DcfScenarioResult, "expected_upside_percent" | "probability_of_upside_percent">,
+  fmt: FormatApi,
+): CardItem[] {
+  return [
+    ...(res.expected_upside_percent != null
+      ? [{ label: "بازده مورد انتظار", value: fmt.signedPercent(res.expected_upside_percent) }]
+      : []),
+    ...(res.probability_of_upside_percent != null
+      ? [{ label: "احتمال بازده مثبت", value: fmt.percent(res.probability_of_upside_percent) }]
+      : []),
+  ];
 }
 
 function ScenarioTab() {
@@ -56,6 +79,32 @@ function ScenarioTab() {
     scenarios.every((s) => s.wacc > 0 && s.wacc - s.terminal_growth >= MIN_SPREAD_PP) &&
     bs.sharesOutstanding > 0;
 
+  // Scenarios carry their own WACC/growth, so only forecast rows (when a
+  // scenario leans on the store) and shares outstanding are shared prerequisites.
+  const needsStoreRows = scenarios.some((s) => s.rows === null);
+  const needs: PrereqKind[] = needsStoreRows ? ["forecast", "shares"] : ["shares"];
+  const missing = missingPrereqs(needs, {
+    forecast: wf.projections,
+    wacc: wf.waccPercent,
+    shares: bs.sharesOutstanding,
+    taxRate: bs.taxRate,
+    marketPrice: wf.marketPrice,
+  });
+  const local = [
+    ...(scenarios.length < 2 || scenarios.length > 5 ? ["بین ۲ تا ۵ سناریو تعریف کنید."] : []),
+    ...(Math.abs(total - 100) > 0.0001 ? ["مجموع احتمالات باید ۱۰۰٪ باشد."] : []),
+    ...(!unique ? ["نام سناریوها باید یکتا باشد."] : []),
+    ...(!scenarios.every((s) => s.wacc > 0 && s.wacc - s.terminal_growth >= MIN_SPREAD_PP)
+      ? ["WACC هر سناریو باید مثبت و دست‌کم ۰٫۵ واحد درصد بیشتر از رشد پایانی آن باشد."]
+      : []),
+    ...(!allRows.every(projectionsValid) && !missing.includes("forecast")
+      ? ["سطرهای پیش‌بینی هر سناریو باید بین ۱ تا ۵۰ سطر باشد."]
+      : []),
+  ];
+
+  // Scenarios carry their own WACC and projections, so only the company-level
+  // fields of the shared base apply.
+  const { projections: _rows, wacc: _wacc, ...company } = buildDcfBase(wf);
   const body: DcfScenarioRequest | null = ready
     ? {
         scenarios: scenarios.map((s) => ({
@@ -65,12 +114,7 @@ function ScenarioTab() {
           terminal_growth: s.terminal_growth / 100,
           projections: (s.rows ?? rows).map((r) => ({ ...r })),
         })),
-        shares_outstanding: bs.sharesOutstanding,
-        tax_rate: bs.taxRate / 100,
-        cash: bs.cash,
-        debt: bs.debt,
-        minority_interest: bs.minorityInterest,
-        preferred_equity: bs.preferredEquity,
+        ...company,
         market_price: wf.marketPrice ?? undefined,
       }
     : null;
@@ -80,7 +124,7 @@ function ScenarioTab() {
 
   const sendRange = () => {
     if (!res) return;
-    const range: FootballRange = { method: "Scenarios", low: res.min_value_per_share, mid: res.expected_value_per_share, high: res.max_value_per_share, source: "از سناریوها" };
+    const range: FootballRangeInput = { method: "Scenarios", low: res.min_value_per_share, mid: res.expected_value_per_share, high: res.max_value_per_share, source: "از سناریوها" };
     wf.upsertRange(range);
     wf.completeStep("scenarios");
   };
@@ -124,21 +168,20 @@ function ScenarioTab() {
 
       <div className="space-y-4">
         {!ready ? (
-          <IncompleteState />
+          <PrerequisiteChecklist missing={missing} local={local} />
         ) : query.isPending && !res ? (
           <ResultSkeleton />
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <Hero label="ارزش مورد انتظار هر سهم" value={fmt.number(res.expected_value_per_share)} />
             <ComponentCards
               items={[
                 { label: "انحراف معیار", value: fmt.number(res.std_dev_value_per_share) },
                 { label: "بدترین", value: res.worst_scenario },
                 { label: "بهترین", value: res.best_scenario },
-                ...(res.expected_upside_percent !== undefined ? [{ label: "بازده مورد انتظار", value: fmt.signedPercent(res.expected_upside_percent) }] : []),
-                ...(res.probability_of_upside_percent !== undefined ? [{ label: "احتمال بازده مثبت", value: fmt.percent(res.probability_of_upside_percent) }] : []),
+                ...scenarioUpsideCards(res, fmt),
               ]}
             />
             <div className="overflow-x-auto">
@@ -170,7 +213,7 @@ function ScenarioTab() {
             <Button type="button" size="sm" onClick={sendRange}>
               <Send className="h-4 w-4" /> ارسال بازه به زمین فوتبال
             </Button>
-          </div>
+          </ResultStack>
         ) : null}
       </div>
     </>
@@ -205,14 +248,25 @@ function SensitivityTab() {
     rows.length >= 1 && wacc !== undefined && wacc > 0 && wacc - tg >= MIN_SPREAD_PP &&
     waccStep > 0 && growthStep > 0 && odd(points) && bs.sharesOutstanding > 0;
 
+  const missing = missingPrereqs(["forecast", "wacc", "shares"], {
+    forecast: rows,
+    wacc: wf.waccPercent,
+    shares: bs.sharesOutstanding,
+    taxRate: bs.taxRate,
+    marketPrice: wf.marketPrice,
+  });
+  const local = [
+    ...(!(waccStep > 0) || !(growthStep > 0) ? ["گام WACC و گام رشد باید مثبت باشند."] : []),
+    ...(!odd(points) ? ["تعداد نقاط هر محور باید فرد و بین ۳ تا ۱۱ باشد."] : []),
+    ...(wacc !== undefined && wacc > 0 && !(wacc - tg >= MIN_SPREAD_PP)
+      ? ["WACC باید دست‌کم ۰٫۵ واحد درصد از رشد پایانی بیشتر باشد."]
+      : []),
+  ];
+
   const body: DcfSensitivityRequest | null = ready
     ? {
-        projections: rows.map((r) => ({ ...r })),
-        wacc: (wacc as number) / 100,
+        ...buildDcfBase(wf),
         terminal_growth: tg / 100,
-        shares_outstanding: bs.sharesOutstanding,
-        tax_rate: bs.taxRate / 100,
-        cash: bs.cash, debt: bs.debt, minority_interest: bs.minorityInterest, preferred_equity: bs.preferredEquity,
         wacc_step: waccStep / 100, growth_step: growthStep / 100, wacc_points: points, growth_points: points,
       }
     : null;
@@ -244,13 +298,13 @@ function SensitivityTab() {
 
       <div className="space-y-4">
         {!ready ? (
-          <IncompleteState />
+          <PrerequisiteChecklist missing={missing} local={local} />
         ) : query.isPending && !res ? (
           <ResultSkeleton />
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <div className="flex items-center justify-between">
               <Tabs value={view} onValueChange={(v) => setView(v as "vps" | "ev")}>
                 <TabsList>
@@ -272,7 +326,7 @@ function SensitivityTab() {
             <Button type="button" size="sm" onClick={sendRange}>
               <Send className="h-4 w-4" /> ارسال بازه به زمین فوتبال
             </Button>
-          </div>
+          </ResultStack>
         ) : null}
       </div>
     </>
@@ -289,14 +343,19 @@ function ReverseTab() {
 
   const ready = rows.length >= 1 && wacc !== undefined && wacc > 0 && bs.sharesOutstanding > 0 && (wf.marketPrice ?? 0) > 0;
 
+  // Reverse DCF also needs a market price to solve for the implied growth.
+  const missing = missingPrereqs(["forecast", "wacc", "shares", "marketPrice"], {
+    forecast: rows,
+    wacc: wf.waccPercent,
+    shares: bs.sharesOutstanding,
+    taxRate: bs.taxRate,
+    marketPrice: wf.marketPrice,
+  });
+
   const body: ReverseDcfRequest | null = ready
     ? {
-        projections: rows.map((r) => ({ ...r })),
-        wacc: (wacc as number) / 100,
-        shares_outstanding: bs.sharesOutstanding,
-        tax_rate: bs.taxRate / 100,
+        ...buildDcfBase(wf),
         market_price: wf.marketPrice as number,
-        cash: bs.cash, debt: bs.debt, minority_interest: bs.minorityInterest, preferred_equity: bs.preferredEquity,
         ...(ownGrowth !== undefined ? { terminal_growth: ownGrowth / 100 } : {}),
       }
     : null;
@@ -314,13 +373,13 @@ function ReverseTab() {
 
       <div className="space-y-4">
         {!ready ? (
-          <IncompleteState />
+          <PrerequisiteChecklist missing={missing} />
         ) : query.isPending && !res ? (
           <ResultSkeleton />
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             {res.status === "solved" ? (
               <>
                 <p className="text-lg font-medium text-foreground">{res.message}</p>
@@ -343,19 +402,19 @@ function ReverseTab() {
                 </div>
               </Card>
             )}
-          </div>
+          </ResultStack>
         ) : null}
       </div>
     </>
   );
 }
 
-function GrowthRangeBar({ min, max, implied, own, gap }: { min: number; max: number; implied: number | null; own: number | null; gap: number | null }) {
+export function GrowthRangeBar({ min, max, implied, own, gap }: { min: number; max: number; implied: number | null; own: number | null; gap: number | null }) {
   const fmt = useFormat();
   const span = max - min || 1;
   const pos = (v: number) => `${Math.max(0, Math.min(1, (v - min) / span)) * 100}%`;
   return (
-    <Card className="p-4">
+    <Card className="p-4" dir="ltr">
       <div className="relative mt-6 h-2 rounded-full bg-accent">
         {implied !== null && (
           <div className="absolute -top-6 -translate-x-1/2 text-center" style={{ left: pos(implied) }}>
@@ -384,7 +443,21 @@ function TabGrid({ children }: { children: React.ReactNode }) {
 }
 
 export function AnalysesPage() {
-  const [tab, setTab] = React.useState("scenarios");
+  // The tab lives in the URL (?tab=scenarios|sensitivity|reverse) so a step-4
+  // sub-item in the sidebar can deep-link straight to its analysis.
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("tab");
+  const tab = ANALYSIS_TABS.some((t) => t.id === requested) ? (requested as string) : "scenarios";
+  const setTab = (next: string) =>
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set("tab", next);
+        return p;
+      },
+      { replace: true },
+    );
+
   return (
     <div className="space-y-4">
       <div>
@@ -395,9 +468,9 @@ export function AnalysesPage() {
       </div>
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="justify-start">
-          <TabsTrigger value="scenarios">سناریوها</TabsTrigger>
-          <TabsTrigger value="sensitivity">حساسیت</TabsTrigger>
-          <TabsTrigger value="reverse">DCF معکوس</TabsTrigger>
+          {ANALYSIS_TABS.map((t) => (
+            <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>
+          ))}
         </TabsList>
         <TabsContent value="scenarios"><TabGrid><ScenarioTab /></TabGrid></TabsContent>
         <TabsContent value="sensitivity"><TabGrid><SensitivityTab /></TabGrid></TabsContent>

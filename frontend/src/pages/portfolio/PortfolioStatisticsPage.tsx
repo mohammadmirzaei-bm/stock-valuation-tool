@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Upload, Send, FlaskConical } from "lucide-react";
 import { SplitLayout } from "@/components/layout/SplitLayout";
 import { NumberField } from "@/components/model/NumberField";
-import { ComponentCards } from "@/components/model/ResultParts";
+import { ComponentCards, ResultStack } from "@/components/model/ResultParts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,8 +11,9 @@ import { ErrorState, IncompleteState, ResultSkeleton } from "@/components/model/
 import { postPortfolioStatistics } from "@/api/endpoints";
 import type { PortfolioStatisticsRequest, PortfolioStatisticsResult, PriceSeriesInput } from "@/api/types";
 import { useAutoQuery } from "@/hooks/useAutoQuery";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { useFormat } from "@/hooks/useFormat";
-import { parsePriceGrid, type ParsedSeries } from "@/lib/parsePrices";
+import { parsePriceGrid } from "@/lib/parsePrices";
 import { usePortfolio } from "@/store/portfolio";
 import { PORTFOLIO_STATISTICS_SAMPLE } from "@/lib/samples";
 
@@ -31,27 +32,24 @@ export function PortfolioStatisticsPage() {
   const navigate = useNavigate();
   const setHandoff = usePortfolio((s) => s.setHandoff);
 
-  const [text, setText] = React.useState("");
-  const [series, setSeries] = React.useState<ParsedSeries[]>([]);
-  const [parseError, setParseError] = React.useState<string | null>(null);
-  const [periods, setPeriods] = React.useState(52);
-
-  const parse = React.useCallback((raw: string) => {
-    setText(raw);
-    const result = parsePriceGrid(raw);
-    if (result.error) {
-      setParseError(result.error);
-      setSeries([]);
-    } else {
-      setParseError(null);
-      setSeries(result.series);
-    }
-  }, []);
+  // The pasted grid and the period choice survive navigation/refresh; the
+  // parsed series and any parse error are derived from the text, never stored
+  // twice (one source of truth).
+  const [text, setText] = usePersistentState<string>("portfolio-statistics-text", "");
+  const [periods, setPeriods] = usePersistentState<number>("portfolio-statistics-periods", 52);
+  const parsed = React.useMemo(
+    () => (text.trim() ? parsePriceGrid(text) : { series: [], droppedRows: 0 }),
+    [text],
+  );
+  const parseError = parsed.error;
+  const dropped = parsed.droppedRows;
+  const series = parsed.error ? [] : parsed.series;
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    parse(await file.text());
+    setText(await file.text());
+    e.target.value = ""; // allow re-uploading the same file after edits
   };
 
   const n = series.length;
@@ -72,7 +70,7 @@ export function PortfolioStatisticsPage() {
       ),
     ].join("\n");
     setPeriods(PORTFOLIO_STATISTICS_SAMPLE.periods_per_year);
-    parse(grid);
+    setText(grid);
   };
 
   const useInOptimizer = () => {
@@ -96,7 +94,7 @@ export function PortfolioStatisticsPage() {
           <textarea
             dir="ltr"
             value={text}
-            onChange={(e) => parse(e.target.value)}
+            onChange={(e) => setText(e.target.value)}
             rows={8}
             placeholder={"الف\tب\n8\t8\n12\t8\n6\t12\n6\t6"}
             className="num w-full rounded-md border border-input bg-bg p-2 text-sm"
@@ -113,6 +111,9 @@ export function PortfolioStatisticsPage() {
             </Button>
           </div>
           {parseError && <p className="text-xs text-negative">{parseError}</p>}
+          {!parseError && dropped > 0 && (
+            <p className="text-xs text-warning">{fmt.number(dropped)} سطر نادیده گرفته شد.</p>
+          )}
           {series.length > 0 && !aligned && <p className="text-xs text-negative">طول ستون‌ها یکسان نیست.</p>}
 
           <div className="space-y-2">
@@ -146,7 +147,7 @@ export function PortfolioStatisticsPage() {
         ) : query.error ? (
           <ErrorState error={query.error} />
         ) : res ? (
-          <div className={query.isFetching ? "is-updating space-y-4" : "space-y-4"}>
+          <ResultStack updating={query.isFetching}>
             <ComponentCards
               items={[
                 ...series.map((s, i) => ({
@@ -216,7 +217,7 @@ export function PortfolioStatisticsPage() {
               <Send className="h-4 w-4" /> استفاده در بهینه‌ساز
             </Button>
             {series.length > 8 && <p className="text-xs text-warning">بهینه‌ساز با وزن مثبت تا ۸ دارایی را پشتیبانی می‌کند.</p>}
-          </div>
+          </ResultStack>
         ) : null
       }
     />

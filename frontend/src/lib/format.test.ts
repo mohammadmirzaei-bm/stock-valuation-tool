@@ -32,7 +32,9 @@ describe("format", () => {
     expect(formatSignedPercent(-1.5)).toBe("-1.5%");
   });
 
-  it("appends the ریال unit for currency", () => {
-    expect(formatCurrency(250)).toBe("250 ریال");
+  it("appends the selected money unit for currency (none by default)", () => {
+    expect(formatCurrency(250)).toBe("250");
+    expect(formatCurrency(250, { moneyUnit: "rial" })).toBe("250 ریال");
+    expect(formatCurrency(250, { moneyUnit: "toman" })).toBe("250 تومان");
   });
 });

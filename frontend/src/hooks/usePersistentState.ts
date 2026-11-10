@@ -45,5 +45,20 @@ export function usePersistentState<T>(key: string, initial: T) {
     return () => window.clearTimeout(id);
   }, [storageKey, state]);
 
+  // Flush the latest value on unmount: navigating away inside the debounce
+  // window must not lose the last edit.
+  const latest = React.useRef({ storageKey, state });
+  latest.current = { storageKey, state };
+  React.useEffect(
+    () => () => {
+      try {
+        localStorage.setItem(latest.current.storageKey, JSON.stringify(latest.current.state));
+      } catch {
+        /* ignore */
+      }
+    },
+    [],
+  );
+
   return [state, setState] as const;
 }

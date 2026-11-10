@@ -19,9 +19,19 @@ describe("parsePriceGrid (paste / CSV → aligned per-asset prices)", () => {
 
   it("drops ragged / non-numeric rows so every series stays equal length", () => {
     const grid = "A,B\n1,2\n3\n4,x\n5,6";
-    const { series } = parsePriceGrid(grid);
+    const { series, droppedRows } = parsePriceGrid(grid);
     expect(series[0].prices).toEqual([1, 5]);
     expect(series[1].prices).toEqual([2, 6]);
+    expect(droppedRows).toBe(2);
+  });
+
+  it("reports zero dropped rows for a clean grid", () => {
+    expect(parsePriceGrid("A,B\n1,2\n3,4\n5,6").droppedRows).toBe(0);
+  });
+
+  it("still reports how many rows it dropped when it errors", () => {
+    // three data rows, none aligned → the parse fails but the count is known
+    expect(parsePriceGrid("A,B\n1\nx\n3,4,5").droppedRows).toBe(3);
   });
 
   it("tolerates Persian digits", () => {

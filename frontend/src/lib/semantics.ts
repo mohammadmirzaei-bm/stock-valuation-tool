@@ -3,8 +3,10 @@
  *
  *  - PEG `interpretation.level`: success/info/warning/error -> positive/primary/
  *    warning/negative, each paired with a label + icon name (never color alone).
- *  - Football-field `market_position`: below/inside/above -> negative/neutral/
- *    positive with a text label.
+ *  - Football-field `market_position` (market price vs the value range):
+ *    below/inside/above -> positive/neutral/negative with a text label. "below"
+ *    = market price under the range (cheaper than value, good); "above" = over
+ *    the range (expensive, bad).
  */
 
 export type Tone = "positive" | "primary" | "warning" | "negative" | "neutral";
@@ -26,9 +28,11 @@ export function pegLevelView(level: string): SemanticView {
 }
 
 const MARKET_POSITION: Record<string, SemanticView> = {
-  below: { tone: "negative", label: "زیر بازار" },
-  inside: { tone: "neutral", label: "در محدودهٔ بازار" },
-  above: { tone: "positive", label: "بالای بازار" },
+  // market price below the range -> cheaper than value -> positive
+  below: { tone: "positive", label: "قیمت بازار زیر بازه (ارزان‌تر)" },
+  inside: { tone: "neutral", label: "قیمت بازار داخل بازه" },
+  // market price above the range -> expensive -> negative
+  above: { tone: "negative", label: "قیمت بازار بالای بازه (گران‌تر)" },
 };
 
 export function marketPositionView(position: string | null | undefined): SemanticView | null {

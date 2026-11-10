@@ -1,8 +1,11 @@
 import * as React from "react";
 import type { EChartsOption } from "echarts";
 import { Chart, type ChartInstance } from "./Chart";
-import { axisStyle, baseOption, chartColors } from "./theme";
+import { axisLabelStyle, axisStyle, baseOption, chartColors, legendStyle } from "./theme";
 import type { PortfolioAnalysisResult } from "@/api/types";
+import { useFormat } from "@/hooks/useFormat";
+import { formatNumber } from "@/lib/format";
+import { escapeHtml } from "@/lib/utils";
 
 /**
  * Risk/return scatter for the optimizer (spec Portfolio): asset dots, the
@@ -19,6 +22,7 @@ export function PortfolioScatter({
   onInit?: (chart: ChartInstance) => void;
 }) {
   const c = chartColors();
+  const { digits } = useFormat();
 
   const option = React.useMemo<EChartsOption>(() => {
     const vol = (p: { volatility_percent: number }) => p.volatility_percent;
@@ -47,16 +51,16 @@ export function PortfolioScatter({
 
     return {
       ...baseOption(c),
-      legend: { textStyle: { color: c.text }, top: 0, type: "scroll" },
+      legend: { ...legendStyle(c), type: "scroll" },
       grid: { left: 8, right: 24, top: 40, bottom: 8, containLabel: true },
-      xAxis: { type: "value", name: "نوسان ٪", nameLocation: "middle", nameGap: 26, scale: true, ...axisStyle(c) },
-      yAxis: { type: "value", name: "بازده ٪", scale: true, ...axisStyle(c) },
+      xAxis: { type: "value", name: "نوسان ٪", nameLocation: "middle", nameGap: 26, scale: true, ...axisStyle(c), axisLabel: { ...axisLabelStyle(c), formatter: (v: number) => formatNumber(v, { digits }) } },
+      yAxis: { type: "value", name: "بازده ٪", scale: true, ...axisStyle(c), axisLabel: { ...axisLabelStyle(c), formatter: (v: number) => formatNumber(v, { digits }) } },
       tooltip: {
         ...baseOption(c).tooltip,
         formatter: (p: any) =>
           p.seriesType === "scatter" && p.data?.name
-            ? `${p.data.name}: نوسان ${p.value[0].toFixed(2)}٪، بازده ${p.value[1].toFixed(2)}٪`
-            : `${p.seriesName}`,
+            ? `${escapeHtml(String(p.data.name))}: نوسان ${formatNumber(p.value[0], { digits, minFractionDigits: 2, maxFractionDigits: 2 })}٪، بازده ${formatNumber(p.value[1], { digits, minFractionDigits: 2, maxFractionDigits: 2 })}٪`
+            : `${escapeHtml(String(p.seriesName))}`,
       },
       series: [
         {
@@ -89,7 +93,7 @@ export function PortfolioScatter({
       ],
     } as EChartsOption;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [res]);
+  }, [res, digits]);
 
   const summary = `نمودار پراکندگی ریسک-بازده با ${res.assets.length} دارایی، مرز کارا و خط تخصیص سرمایه.`;
   return <Chart option={option} height={380} onInit={onInit} summary={summary} />;

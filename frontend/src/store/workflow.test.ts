@@ -34,15 +34,47 @@ describe("workflow store — hand-off + detach", () => {
 });
 
 describe("workflow store — ranges, sample, reset", () => {
-  it("upserts by method (unique) and removes", () => {
+  it("upserts by method (unique) and removes by id", () => {
     const wf = useWorkflow.getState();
     wf.upsertRange({ method: "DCF", low: 100, mid: 150, high: 200 });
     wf.upsertRange({ method: "Multiples", low: 120, mid: 140, high: 180 });
-    wf.upsertRange({ method: "DCF", low: 90, mid: 140, high: 210 }); // replace
+    wf.upsertRange({ method: "DCF", low: 90, mid: 140, high: 210 }); // replace in place
     expect(useWorkflow.getState().ranges.length).toBe(2);
     expect(useWorkflow.getState().ranges.find((r) => r.method === "DCF")?.low).toBe(90);
-    useWorkflow.getState().removeRange("Multiples");
+    const multiplesId = useWorkflow.getState().ranges.find((r) => r.method === "Multiples")!.id;
+    useWorkflow.getState().removeRange(multiplesId);
     expect(useWorkflow.getState().ranges.map((r) => r.method)).toEqual(["DCF"]);
+  });
+
+  it("assigns a stable id and re-upsert keeps order + id (no reorder on edit)", () => {
+    const wf = useWorkflow.getState();
+    wf.upsertRange({ method: "DCF", low: 100, mid: 150, high: 200 });
+    wf.upsertRange({ method: "Multiples", low: 120, mid: 140, high: 180 });
+    const [dcfId, multId] = useWorkflow.getState().ranges.map((r) => r.id);
+    expect(dcfId).toBeTruthy();
+    expect(multId).not.toBe(dcfId);
+
+    // Re-sending DCF must update in place, not move it after Multiples.
+    wf.upsertRange({ method: "DCF", low: 110, mid: 160, high: 210 });
+    const after = useWorkflow.getState().ranges;
+    expect(after.map((r) => r.method)).toEqual(["DCF", "Multiples"]);
+    expect(after[0].id).toBe(dcfId);
+    expect(after[0].low).toBe(110);
+  });
+
+  it("updateRange(id, patch) edits fields in place, preserving order and id", () => {
+    const wf = useWorkflow.getState();
+    wf.upsertRange({ method: "DCF", low: 100, mid: 150, high: 200 });
+    wf.upsertRange({ method: "Multiples", low: 120, mid: 140, high: 180 });
+    const dcfId = useWorkflow.getState().ranges[0].id;
+
+    wf.updateRange(dcfId, { method: "DCF ارزش" });
+    wf.updateRange(dcfId, { low: 90 });
+    const after = useWorkflow.getState().ranges;
+    expect(after.map((r) => r.method)).toEqual(["DCF ارزش", "Multiples"]);
+    expect(after[0].id).toBe(dcfId);
+    expect(after[0].low).toBe(90);
+    expect(after[0].mid).toBe(150); // untouched fields preserved
   });
 
   it("loadSample seeds the reference numbers (WACC 9, 5 FCFF rows, 100 shares)", () => {
@@ -71,5 +103,18 @@ describe("workflow store — ranges, sample, reset", () => {
     const raw = localStorage.getItem("sv-workflow");
     expect(raw).toBeTruthy();
     expect(JSON.parse(raw!).state.waccPercent).toBe(9);
+  });
+});
+
+describe("workflow store — completion flags", () => {
+  it("completeStep sets only its own flag (dcf and football stay independent)", () => {
+    useWorkflow.getState().completeStep("dcf");
+    expect(useWorkflow.getState().completed.dcf).toBe(true);
+    expect(useWorkflow.getState().completed.football).toBe(false);
+    expect(useWorkflow.getState().completed.multiples).toBe(false);
+
+    useWorkflow.getState().completeStep("football");
+    expect(useWorkflow.getState().completed.football).toBe(true);
+    expect(useWorkflow.getState().completed.dcf).toBe(true);
   });
 });

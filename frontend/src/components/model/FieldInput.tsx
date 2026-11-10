@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTip } from "./InfoTip";
 import { resolveField, type FieldDef } from "@/config/fields";
+import { useSettings } from "@/store/settings";
+import { moneySuffix } from "@/lib/format";
 import type { FormValues } from "@/lib/request";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +22,12 @@ interface FieldInputProps {
 /** A labeled numeric input with unit suffix, ⓘ tooltip and inline error. */
 export function FieldInput({ control, field, error, disabled, badge }: FieldInputProps) {
   const meta = resolveField(field);
+  const moneyUnit = useSettings((s) => s.moneyUnit);
   const { field: rhf } = useController({ control, name: field.key });
+
+  // Money fields take their suffix from the settings unit (never hardcoded);
+  // an explicit per-field suffix still wins.
+  const suffix = meta.suffix ?? (field.unit === "money" ? moneySuffix(moneyUnit) : undefined);
 
   const display = rhf.value === undefined || rhf.value === null || Number.isNaN(rhf.value) ? "" : String(rhf.value);
 
@@ -52,7 +59,7 @@ export function FieldInput({ control, field, error, disabled, badge }: FieldInpu
           aria-describedby={error ? `${rhf.name}-error` : undefined}
           className={cn(error && "border-negative focus-visible:ring-negative")}
         />
-        {meta.suffix && <span className="shrink-0 text-sm text-muted-foreground">{meta.suffix}</span>}
+        {suffix && <span className="shrink-0 text-sm text-muted-foreground">{suffix}</span>}
       </div>
       {error && (
         <p id={`${rhf.name}-error`} className="text-xs text-negative">

@@ -20,49 +20,51 @@ module.exports = {
     },
     extend: {
       colors: {
-        // Spec color tokens (dark theme)
-        bg: "var(--bg)",
-        surface: "var(--surface)",
-        border: "var(--border)",
-        text: "var(--text)",
-        "text-muted": "var(--text-muted)",
+        // Spec color tokens (dark theme). Defined as rgb(var(--x-rgb) / <alpha-value>)
+        // so opacity modifiers (bg-primary/10, border-positive/40, ...) compose alpha;
+        // the solid form (alpha 1) is byte-for-byte the same color as the hex token.
+        bg: "rgb(var(--bg-rgb) / <alpha-value>)",
+        surface: "rgb(var(--surface-rgb) / <alpha-value>)",
+        border: "rgb(var(--border-rgb) / <alpha-value>)",
+        text: "rgb(var(--text-rgb) / <alpha-value>)",
+        "text-muted": "rgb(var(--text-muted-rgb) / <alpha-value>)",
         primary: {
-          DEFAULT: "var(--primary)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "rgb(var(--primary-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground-rgb) / <alpha-value>)",
         },
-        positive: "var(--positive)",
-        negative: "var(--negative)",
-        warning: "var(--warning)",
+        positive: "rgb(var(--positive-rgb) / <alpha-value>)",
+        negative: "rgb(var(--negative-rgb) / <alpha-value>)",
+        warning: "rgb(var(--warning-rgb) / <alpha-value>)",
 
         // shadcn/ui semantic aliases (also defined as CSS variables)
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "rgb(var(--background-rgb) / <alpha-value>)",
+        foreground: "rgb(var(--foreground-rgb) / <alpha-value>)",
         card: {
-          DEFAULT: "var(--card)",
-          foreground: "var(--card-foreground)",
+          DEFAULT: "rgb(var(--card-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--card-foreground-rgb) / <alpha-value>)",
         },
         popover: {
-          DEFAULT: "var(--popover)",
-          foreground: "var(--popover-foreground)",
+          DEFAULT: "rgb(var(--popover-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--popover-foreground-rgb) / <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "var(--secondary)",
-          foreground: "var(--secondary-foreground)",
+          DEFAULT: "rgb(var(--secondary-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--secondary-foreground-rgb) / <alpha-value>)",
         },
         muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)",
+          DEFAULT: "rgb(var(--muted-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--muted-foreground-rgb) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
+          DEFAULT: "rgb(var(--accent-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--accent-foreground-rgb) / <alpha-value>)",
         },
         destructive: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)",
+          DEFAULT: "rgb(var(--destructive-rgb) / <alpha-value>)",
+          foreground: "rgb(var(--destructive-foreground-rgb) / <alpha-value>)",
         },
-        input: "var(--input)",
-        ring: "var(--ring)",
+        input: "rgb(var(--input-rgb) / <alpha-value>)",
+        ring: "rgb(var(--ring-rgb) / <alpha-value>)",
 
         // Chart series literals (ECharts reads these from CSS variables at runtime)
         chart: {

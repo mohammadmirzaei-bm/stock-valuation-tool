@@ -26,6 +26,15 @@
     /* Chart helpers */
     --chart-bar: rgba(76, 141, 201, 0.7);
 
+    /* Categorical series palette: hues separated well enough for multi-series
+       charts (teal / violet / rose / sky sit between the semantic blue, amber,
+       green, red). Semantic charts (heatmap, football field) keep using the
+       meaning-carrying positive/negative/warning tokens instead. */
+    --chart-2: #56b8a8;
+    --chart-3: #a78bda;
+    --chart-4: #e88fb4;
+    --chart-5: #7dc4e8;
+
     /* shadcn/ui semantic aliases mapped onto the spec tokens */
     --background: var(--bg);
     --foreground: var(--text);
@@ -44,6 +53,38 @@
     --input: #263047;
     --ring: #4c8dc9;
 
+    /* Channel triplets (R G B) so Tailwind opacity modifiers such as
+       bg-primary/10 and border-positive/40 can compose alpha. The hex tokens
+       above are kept for direct var() consumers (ECharts colors, box-shadows,
+       focus ring) which need a ready-to-use color string, not channels. */
+    --bg-rgb: 15 20 32;
+    --surface-rgb: 23 30 46;
+    --border-rgb: 38 48 71;
+    --text-rgb: 230 234 242;
+    --text-muted-rgb: 154 166 189;
+    --primary-rgb: 76 141 201;
+    --primary-foreground-rgb: 15 20 32;
+    --positive-rgb: 76 175 122;
+    --negative-rgb: 229 100 95;
+    --warning-rgb: 224 163 58;
+
+    --background-rgb: var(--bg-rgb);
+    --foreground-rgb: var(--text-rgb);
+    --card-rgb: var(--surface-rgb);
+    --card-foreground-rgb: var(--text-rgb);
+    --popover-rgb: 27 35 52;
+    --popover-foreground-rgb: var(--text-rgb);
+    --secondary-rgb: 32 42 61;
+    --secondary-foreground-rgb: var(--text-rgb);
+    --muted-rgb: 27 35 52;
+    --muted-foreground-rgb: var(--text-muted-rgb);
+    --accent-rgb: 38 48 71;
+    --accent-foreground-rgb: var(--text-rgb);
+    --destructive-rgb: var(--negative-rgb);
+    --destructive-foreground-rgb: 15 20 32;
+    --input-rgb: 38 48 71;
+    --ring-rgb: 76 141 201;
+
     --radius: 12px;
   }
 
@@ -55,7 +96,6 @@
     @apply bg-background text-foreground font-sans text-body antialiased;
     margin: 0;
     min-height: 100vh;
-    background-image: radial-gradient(ellipse at 15% 0%, rgba(76, 141, 201, 0.07), transparent 36%);
   }
 
   /* Headings use the same Vazirmatn family, heavier weights */
@@ -87,25 +127,50 @@
       transition-duration: 0.001ms !important;
     }
   }
+
+  /* Scrollbars in the app's own visual language: thin, token-colored thumb,
+     invisible track — the browser default gray reads as a foreign object on
+     the dark surfaces. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-rgb)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-rgb));
+    border-radius: 8px;
+    border: 2px solid var(--bg);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--text-muted-rgb) / 0.55);
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
 }
 
-/* Dashboard surfaces: subtle depth while retaining the application's dark palette. */
+/* Dashboard chrome: flat surfaces with 1px borders — no gradients, blur or elevation shadows. */
 @layer components {
   .app-header {
-    background: rgba(20, 27, 41, 0.94);
-    backdrop-filter: blur(16px);
+    background: var(--surface);
   }
 
   .app-sidebar {
-    background: linear-gradient(180deg, #151d2c 0%, #111927 100%);
+    background: var(--surface);
   }
 
   .brand-mark,
   .tool-icon,
   .step-number {
-    color: #8fc8f5;
-    background: linear-gradient(145deg, rgba(76, 141, 201, 0.23), rgba(76, 141, 201, 0.08));
-    border: 1px solid rgba(120, 180, 229, 0.18);
+    color: var(--primary);
+    background: rgb(var(--primary-rgb) / 0.12);
+    border: 1px solid rgb(var(--primary-rgb) / 0.28);
   }
 
   .sidebar-active {
@@ -117,45 +182,25 @@
     margin-inline: auto;
   }
 
-  .dashboard-hero {
-    background: radial-gradient(circle at 18% 50%, rgba(76, 141, 201, 0.21), transparent 36%),
-      linear-gradient(115deg, #182a40 0%, #19263a 48%, #192132 100%);
-    box-shadow: 0 16px 45px rgba(3, 8, 18, 0.16);
+  .tool-link {
+    background: var(--bg);
   }
 
-  .hero-art-orbit {
-    position: absolute;
-    border: 1px solid rgba(143, 200, 245, 0.16);
-    border-radius: 50%;
+  /* One short, calm entrance per page — motion that acknowledges navigation
+     without theatrics (reduced-motion users get none, see base layer). */
+  .page-enter {
+    animation: page-enter 180ms ease-out;
   }
-  .hero-art-orbit-outer { width: 240px; height: 240px; }
-  .hero-art-orbit-inner { width: 175px; height: 175px; border-style: dashed; }
-  .hero-art-icon {
-    display: grid;
-    width: 105px;
-    height: 105px;
-    place-items: center;
-    color: #a4d4fa;
-    border: 1px solid rgba(143, 200, 245, 0.24);
-    border-radius: 32px;
-    background: linear-gradient(145deg, rgba(76, 141, 201, 0.25), rgba(76, 141, 201, 0.07));
-    transform: rotate(-8deg);
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
-  .hero-art-dot { position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #8fc8f5; box-shadow: 0 0 16px #4c8dc9; }
-  .hero-art-dot-one { transform: translate(102px, -64px); }
-  .hero-art-dot-two { transform: translate(-78px, 91px); width: 6px; height: 6px; }
-
-  .workflow-card,
-  .dashboard-tool-card {
-    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 65%);
-    box-shadow: 0 8px 24px rgba(3, 8, 18, 0.12);
-  }
-  .workflow-card:hover,
-  .dashboard-tool-card:hover {
-    box-shadow: 0 12px 30px rgba(3, 8, 18, 0.22);
-  }
-  .workflow-card:hover { transform: translateY(-2px); }
-  .tool-link { background: rgba(15, 20, 32, 0.45); }
 }
 
 /* ----- LTR islands: numbers, formulas and variable names stay left-to-right ----- */

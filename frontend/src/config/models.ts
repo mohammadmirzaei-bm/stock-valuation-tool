@@ -41,7 +41,7 @@ export const EQUITY_GROUP: NavItem[] = [
   { id: "single-period", label: "تک‌دوره‌ای", path: "/equity/single-period" },
   { id: "zero-growth", label: "رشد صفر", path: "/equity/zero-growth" },
   { id: "gordon", label: "گوردون", path: "/equity/gordon" },
-  { id: "supernormal", label: "رشد غیرعادی", path: "/equity/supernormal-growth" },
+  { id: "supernormal", label: "رشد غیرعادی", path: "/equity/supernormal" },
   { id: "dividend-projection", label: "پیش‌بینی سود", path: "/equity/dividend-projection" },
   { id: "expected-return", label: "بازده مورد انتظار", path: "/equity/expected-return" },
   { id: "capm", label: "CAPM", path: "/equity/capm" },

@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FieldInput } from "./FieldInput";
-import { FormulaStrip } from "./ResultParts";
+import { FormulaStrip, ResultStack } from "./ResultParts";
 import { EmptyState, ErrorState, IncompleteState, ResultSkeleton } from "./StateViews";
 import { useValuation } from "@/hooks/useValuation";
 import type { UseValuationResult } from "@/hooks/useValuation";
@@ -11,7 +11,6 @@ import type { FieldDef } from "@/config/fields";
 import type { FormValues } from "@/lib/request";
 import { fieldFromLoc, isShapeError } from "@/lib/apiErrors";
 import { loadStoredForm, saveStoredForm } from "@/lib/pageForm";
-import { cn } from "@/lib/utils";
 
 export interface ModelPageProps<Res> {
   pageKey: string;
@@ -71,10 +70,18 @@ export function ModelPage<Res>(props: ModelPageProps<Res>) {
   });
 
   // Persist this page's form values so navigating away does not clear them.
+  // The write is debounced while typing, but flushed on unmount so a quick
+  // navigation never drops the last edit.
+  const latest = React.useRef({ pageKey, values: v.values });
+  latest.current = { pageKey, values: v.values };
   React.useEffect(() => {
     const id = window.setTimeout(() => saveStoredForm(pageKey, v.values), 300);
     return () => window.clearTimeout(id);
   }, [pageKey, v.values]);
+  React.useEffect(
+    () => () => saveStoredForm(latest.current.pageKey, latest.current.values),
+    [],
+  );
 
   const shapeFields = React.useMemo(() => {
     if (v.error && isShapeError(v.error)) {
@@ -102,11 +109,11 @@ export function ModelPage<Res>(props: ModelPageProps<Res>) {
     if (v.hasResult) {
       const updating = v.isFetching && !v.isFirstLoading;
       return (
-        <div className={cn("space-y-4", updating && "is-updating")} aria-busy={updating}>
+        <ResultStack updating={updating}>
           <FormulaStrip formula={formula} />
           {renderResult(v.result as Res, v.values)}
           {renderActions?.(v.result as Res, v.values)}
-        </div>
+        </ResultStack>
       );
     }
     return <EmptyState formula={formula} whenSuitable={whenSuitable} onLoadSample={v.loadSample} />;

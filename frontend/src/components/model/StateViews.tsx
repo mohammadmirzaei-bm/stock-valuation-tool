@@ -2,6 +2,7 @@ import * as React from "react";
 import { AlertTriangle, TriangleAlert, Server, RotateCcw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/common/Skeleton";
 import { checkHealth } from "@/lib/api";
 import { isShapeError, type ApiError } from "@/lib/apiErrors";
 import type { FastApiErrorDetail } from "@/lib/apiErrors";
@@ -106,14 +107,32 @@ export function IncompleteState() {
   );
 }
 
-/** First-load skeleton for the results column. */
+/**
+ * First-load skeleton shaped like the real result column: the hero answer
+ * (label → big number → unit/hint), a row of component cards, then a chart block.
+ */
 export function ResultSkeleton() {
   return (
-    <Card className="space-y-3 p-6">
-      <div className="h-4 w-1/3 animate-pulse rounded bg-accent/60" />
-      <div className="h-10 w-1/2 animate-pulse rounded bg-accent/60" />
-      <div className="h-40 w-full animate-pulse rounded bg-accent/60" />
-    </Card>
+    <div className="space-y-4" role="status">
+      <span className="sr-only">در حال بارگذاری نتیجه</span>
+      {/* Hero: label above, big number, unit/hint below */}
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-10 w-56" />
+        <Skeleton className="h-3 w-40" />
+      </div>
+      {/* Component-cards row (mirrors ComponentCards' grid) */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2 rounded-card border border-border bg-surface p-2.5">
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+      {/* Chart block */}
+      <Skeleton className="h-56 w-full rounded-card" />
+    </div>
   );
 }
 
