@@ -30,11 +30,23 @@ build/
 dist/
 **/*.egg-info/
 
+# کش mutation testing و نصب موقت ابزار آن
+# mutants/ نسخه کاملی از stock_valuation/ و tests/ است و بی‌مصرف
+# بزرگ‌ترین بخش بستر بیلد می‌شود.
+mutants/
+.mutmut_pkgs/
+
 # ابزارهای محلی و مستندات
+.vscode/
 .qoder/
 .agents/
+docs/
+setup.cfg
+requirements.txt
+requirements-dev.txt
 README.md
 Achievements.md
+Stock Valuation Frontend — Design Specification.md
 
 # فایل‌های خود داکر
 Dockerfile
