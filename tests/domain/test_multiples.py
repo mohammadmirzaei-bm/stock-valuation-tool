@@ -421,5 +421,19 @@ class TestImpliedValuation(unittest.TestCase):
             first.metric = 0.0  # type: ignore[misc]
 
 
+class TestImpliedValuationDefaults(unittest.TestCase):
+    """اقلام پیش‌فرض ترازنامه در ضریب‌های بنگاهی صفر هستند"""
+
+    def test_ev_ebitda_default_debt_is_zero(self):
+        result = implied_valuation(
+            MultipleKind.EV_EBITDA, 100.0, 10.0, _peers(10.0, 10.0, 10.0), cash=50.0
+        )
+        self.assertAlmostEqual(result.mid.implied_enterprise_value, 1000.0, places=10)
+        # بدون بدهی صریح، ارزش حقوق صاحبان سهام = EV + نقد.
+        self.assertAlmostEqual(result.mid.implied_equity_value, 1050.0, places=10)
+        self.assertAlmostEqual(result.mid.value_per_share, 105.0, places=10)
+        self.assertIsNotNone(result.statistics)
+
+
 if __name__ == "__main__":
     unittest.main()

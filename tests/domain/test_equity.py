@@ -460,5 +460,50 @@ class TestDeterminism(unittest.TestCase):
         self.assertEqual(growth_rates, [0.25, 0.20, 0.15])
 
 
+class TestBoundaryContracts(unittest.TestCase):
+    """قراردادهای مرزی افشاشده در تست جهش (mutmut)"""
+
+    def test_peg_exactly_half_is_undervalued(self):
+        # PEG = 0.5 در دسته «کم‌ارزش» است، نه «خیلی کم‌ارزش».
+        self.assertEqual(interpret_peg(0.5).category, "undervalued")
+
+    def test_peg_growth_exactly_hundred_accepted(self):
+        self.assertAlmostEqual(peg_ratio(20.0, 100.0), 0.2, places=10)
+
+    def test_project_dividends_single_period(self):
+        dividends = project_dividends(2.0, 0.05, 1)
+        self.assertEqual(len(dividends), 1)
+        self.assertAlmostEqual(dividends[0], 2.1, places=10)
+
+    def test_supernormal_single_year_and_terminal_echo(self):
+        result = supernormal_growth_model(2.0, [0.10], 1, 0.05, 0.12)
+        self.assertAlmostEqual(result.dividends[0], 2.2, places=10)
+        self.assertAlmostEqual(result.p_terminal, 2.2 * 1.05 / 0.07, places=10)
+
+    def test_supernormal_schedule_terminal_row_fields(self):
+        result = supernormal_growth_model(2.0, [0.10], 1, 0.05, 0.12)
+        rows = supernormal_schedule([0.10], result, 0.05)
+        self.assertEqual(rows[0].period, 1)
+        self.assertAlmostEqual(rows[0].present_value, result.pv_dividends[0], places=10)
+        terminal = rows[-1]
+        self.assertTrue(terminal.is_terminal)
+        self.assertEqual(terminal.period, 0)
+        self.assertAlmostEqual(terminal.growth_rate, 0.05, places=10)
+        self.assertAlmostEqual(terminal.present_value, result.pv_p_terminal, places=10)
+
+    def test_gordon_breakdown_price_echo(self):
+        breakdown = gordon_breakdown(2.0, 0.05, 0.12)
+        self.assertAlmostEqual(breakdown.price, 2.0 * 1.05 / 0.07, places=10)
+
+    def test_capm_breakdown_input_echo(self):
+        breakdown = capm_breakdown(0.03, 1.2, 0.10)
+        self.assertAlmostEqual(breakdown.beta, 1.2, places=10)
+        self.assertAlmostEqual(breakdown.market_return, 0.10, places=10)
+
+    def test_growth_opportunities_breakdown_npvgo_echo(self):
+        breakdown = growth_opportunities_breakdown(5.0, 0.12, 8.0)
+        self.assertAlmostEqual(breakdown.npvgo, 8.0, places=10)
+
+
 if __name__ == "__main__":
     unittest.main()

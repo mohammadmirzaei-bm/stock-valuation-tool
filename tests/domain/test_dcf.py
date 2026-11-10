@@ -88,6 +88,11 @@ class TestDcf(unittest.TestCase):
         self.assertAlmostEqual(
             result.terminal_value_share_percent, 85.41417749298277, places=10
         )
+        # بازتاب ورودی‌های ترازنامه در خروجی
+        self.assertEqual(result.cash, 50.0)
+        self.assertEqual(result.debt, 200.0)
+        self.assertEqual(result.minority_interest, 0.0)
+        self.assertEqual(result.preferred_equity, 0.0)
 
     def test_hand_computed_components(self):
         # Year1: 100*(1-0.25)+10-15-5 = 65
@@ -113,6 +118,15 @@ class TestDcf(unittest.TestCase):
         self.assertAlmostEqual(result.years[0].fcff, 65.0, places=10)
         self.assertAlmostEqual(result.years[1].fcff, 74.0, places=10)
         self.assertAlmostEqual(result.years[2].fcff, 84.0, places=10)
+        # اجزای سطر سالانه باید مستقل از fcff نیز صحت داشته باشند
+        row = result.years[0]
+        self.assertAlmostEqual(row.ebit, 100.0, places=10)
+        self.assertAlmostEqual(row.nopat, 75.0, places=10)
+        self.assertAlmostEqual(row.depreciation, 10.0, places=10)
+        self.assertAlmostEqual(row.capex, 15.0, places=10)
+        self.assertAlmostEqual(row.delta_nwc, 5.0, places=10)
+        self.assertAlmostEqual(row.discount_factor, 1.0 / 1.1, places=10)
+        self.assertAlmostEqual(row.present_value, 65.0 / 1.1, places=10)
         self.assertAlmostEqual(result.pv_fcff_total, expected_pvs, places=10)
         self.assertAlmostEqual(result.terminal_value, expected_tv, places=10)
         self.assertAlmostEqual(result.pv_terminal_value, expected_pv_tv, places=10)
@@ -193,6 +207,11 @@ class TestDcf(unittest.TestCase):
                 0.0,
             )
         self.assertIn("جریان نقدی آزاد پایانی", str(ctx.exception))
+
+    def test_terminal_fcff_between_zero_and_one_accepted(self):
+        # FCFF پایانی مثبت ولی کمتر از 1؛ مرز رد صفر است، نه یک.
+        result = dcf_valuation(self._ebit_only([0.5]), 0.10, 0.0, 1.0, 0.0)
+        self.assertGreater(result.enterprise_value, 0.0)
 
     def test_empty_projections_rejected(self):
         with self.assertRaises(ValidationError):

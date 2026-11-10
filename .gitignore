@@ -16,3 +16,6 @@ Thumbs.db
 
 # Streamlit agent skills (environment-specific symlinks)
 .agents/skills/developing-with-streamlit
+
+# mutmut mutation-testing cache and results
+mutants/
