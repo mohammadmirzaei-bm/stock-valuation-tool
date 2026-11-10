@@ -5,11 +5,13 @@
 """
 
 import unittest
+from collections import deque
 from dataclasses import FrozenInstanceError
 
 from stock_valuation.domain.errors import CalculationError, ValidationError
 from stock_valuation.domain.portfolio_stats import (
     SampleStatistics,
+    _correlation,
     returns_from_prices,
     sample_statistics,
     statistics_from_prices,
@@ -17,6 +19,7 @@ from stock_valuation.domain.portfolio_stats import (
 from stock_valuation.domain.validators import (
     CORRELATION_TOLERANCE,
     COVARIANCE_SYMMETRY_TOLERANCE,
+    PSD_TOLERANCE,
     validate_asset_names,
     validate_covariance_matrix,
     validate_periods_per_year,
@@ -233,7 +236,10 @@ class TestPortfolioValidators(unittest.TestCase):
 
     def test_correlation_above_one_tolerance(self):
         within = 1.0 + CORRELATION_TOLERANCE / 2.0
-        validate_covariance_matrix([[1.0, within], [within, 1.0]])
+        with self.assertRaises(ValidationError):
+            validate_covariance_matrix([[1.0, within], [within, 1.0]])
+        self.assertEqual(_correlation([[1.0, within], [within, 1.0]]),
+                         [[1.0, 1.0], [1.0, 1.0]])
         beyond = 1.0 + CORRELATION_TOLERANCE * 10.0
         with self.assertRaises(ValidationError):
             validate_covariance_matrix([[1.0, beyond], [beyond, 1.0]])
@@ -248,6 +254,196 @@ class TestPortfolioValidators(unittest.TestCase):
         snapshot = [row[:] for row in matrix]
         validate_covariance_matrix(matrix)
         self.assertEqual(matrix, snapshot)
+
+
+class TestStatisticsMutationGaps(unittest.TestCase):
+    """نوع مشاهده، حذف میانگین و تطابق تعداد نام‌ها با سری قیمت"""
+
+    def test_bool_observation_rejected(self):
+        with self.assertRaises(ValidationError):
+            sample_statistics([[True, 0.5, -0.5], [0.0, 0.5, -0.5]], 1)
+
+    def test_non_sequence_returns_rejected(self):
+        with self.assertRaises(ValidationError):
+            sample_statistics(deque(_RETURNS), 1)
+
+    def test_demeaned_covariance(self):
+        # میانگین‌های غیرصفر باید پیش از ضرب مشاهدات حذف شوند.
+        result = sample_statistics([[1.0, 3.0], [2.0, 4.0]], 1)
+        self.assertEqual(result.observations, 2)
+        self.assertEqual(result.mean_returns, [2.0, 3.0])
+        self.assertEqual(result.covariance, [[2.0, 2.0], [2.0, 2.0]])
+
+    def test_price_series_count_mismatch_rejected(self):
+        with self.assertRaises(ValidationError):
+            statistics_from_prices(["الف", "ب", "ج"], _PRICES, 1)
+
+
+class TestCorrelationBoundaries(unittest.TestCase):
+    """قطر دقیق، برش نویز شناور و رد خطای بیش از تلورانس"""
+
+    def test_diagonal_is_exactly_one_despite_roundoff(self):
+        result = sample_statistics([[-0.03, 0.03], [-0.03, 0.03]], 1)
+        self.assertEqual(result.correlation[0][0], 1.0)
+        self.assertEqual(result.correlation[1][1], 1.0)
+
+    def test_positive_roundoff_is_clipped_to_one(self):
+        result = sample_statistics([[-0.003, 0.003], [-0.003, 0.003]], 1)
+        self.assertEqual(result.correlation, [[1.0, 1.0], [1.0, 1.0]])
+
+    def test_negative_roundoff_is_clipped_to_minus_one(self):
+        result = sample_statistics([[-0.003, 0.003], [0.003, -0.003]], 1)
+        self.assertEqual(result.correlation, [[1.0, -1.0], [-1.0, 1.0]])
+
+    def test_exact_correlation_tolerance_is_accepted(self):
+        for sign in (1.0, -1.0):
+            with self.subTest(sign=sign):
+                value = sign * (1.0 + CORRELATION_TOLERANCE)
+                covariance = [[1.0, value], [value, 1.0]]
+                with self.assertRaises(ValidationError):
+                    validate_covariance_matrix(covariance)
+                self.assertEqual(_correlation(covariance), [[1.0, sign], [sign, 1.0]])
+
+    def test_subnormal_roundoff_beyond_tolerance_is_rejected(self):
+        with self.assertRaises(CalculationError):
+            sample_statistics([[-1e-160, 1e-160], [-1e-161, 1e-161]], 1)
+
+
+class TestCovariancePSD(unittest.TestCase):
+    """اعتبارسنجی نیمه‌معین مثبت، محورگیری و مرزهای دقیق تلورانس."""
+
+    def test_psd_tolerance_constant(self):
+        """مقدار پایه تلورانس PSD برابر قرارداد عددی است."""
+        self.assertEqual(PSD_TOLERANCE, 1e-12)
+
+    def test_pairwise_valid_non_psd_rejected(self):
+        """همبستگی‌های زوجی معتبر، نیمه‌معین مثبت بودن را تضمین نمی‌کنند."""
+        for matrix in (
+            [[1.0, 0.9, 0.9], [0.9, 1.0, -0.9], [0.9, -0.9, 1.0]],
+            [[1.0, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.5, 1.0]],
+        ):
+            with self.subTest(matrix=matrix):
+                with self.assertRaises(ValidationError):
+                    validate_covariance_matrix(matrix)
+
+    def test_singular_psd_accepted(self):
+        """همبستگی کامل، دارایی بدون واریانس و ماتریس صفر معتبرند."""
+        for matrix in (
+            [[1.0, 1.0], [1.0, 1.0]],
+            [[0.0, 0.0], [0.0, 1.0]],
+            [[0.0, 0.0], [0.0, 0.0]],
+        ):
+            with self.subTest(matrix=matrix):
+                self.assertIsNone(validate_covariance_matrix(matrix))
+
+    def test_flat_schur_block_with_covariance_rejected(self):
+        """قطر صفر پس از حذف با کوواریانس باقی‌مانده غیرصفر رد می‌شود."""
+        with self.assertRaises(ValidationError):
+            validate_covariance_matrix(
+                [[1.0, 1.0, 1.0], [1.0, 1.0, 0.5], [1.0, 0.5, 1.0]]
+            )
+
+    def test_exact_negative_schur_tolerance_accepted(self):
+        """محور نهایی دقیقاً برابر منفی تلورانس پذیرفته می‌شود."""
+        tolerance = PSD_TOLERANCE
+        matrix = [[1.0, 1.0, 0.0],
+                  [1.0, 1.0, 2.0 * tolerance],
+                  [0.0, 2.0 * tolerance, 4.0 * tolerance]]
+        self.assertEqual(-(2.0 * tolerance / (4.0 * tolerance))
+                         * (2.0 * tolerance), -tolerance)
+        self.assertIsNone(validate_covariance_matrix(matrix))
+
+    def test_below_negative_schur_tolerance_rejected(self):
+        """محور نهایی کمی کمتر از منفی تلورانس رد می‌شود."""
+        tolerance = PSD_TOLERANCE
+        matrix = [[1.0, 1.0, 0.0],
+                  [1.0, 1.0, 2.0 * tolerance],
+                  [0.0, 2.0 * tolerance, 4.0 * tolerance / 1.01]]
+        with self.assertRaises(ValidationError):
+            validate_covariance_matrix(matrix)
+
+    def test_flat_block_negative_diagonal_boundary(self):
+        """قطر منفی در زیرفضای تخت با کران شامل سنجیده می‌شود."""
+        tolerance = PSD_TOLERANCE
+        for divisor in (1.0, 1.01):
+            matrix = [[1.0, 1.0, 0.0, 0.0],
+                      [1.0, 1.0, 2.0 * tolerance, 0.0],
+                      [0.0, 2.0 * tolerance, 4.0 * tolerance / divisor, 0.0],
+                      [0.0, 0.0, 0.0, 0.0]]
+            with self.subTest(divisor=divisor):
+                if divisor == 1.0:
+                    self.assertIsNone(validate_covariance_matrix(matrix))
+                else:
+                    with self.assertRaises(ValidationError):
+                        validate_covariance_matrix(matrix)
+
+    def test_exact_flat_off_diagonal_tolerance_accepted(self):
+        """درایه برون‌قطری تخت در هر دو علامت دقیقاً روی کران مجاز است."""
+        tolerance = PSD_TOLERANCE
+        for sign in (-1.0, 1.0):
+            with self.subTest(sign=sign):
+                matrix = [[tolerance, sign * tolerance],
+                          [sign * tolerance, tolerance]]
+                self.assertIsNone(validate_covariance_matrix(matrix))
+
+    def test_exact_positive_pivot_enters_flat_branch(self):
+        """محور برابر تلورانس باید درایه برون‌قطری بیش از کران را رد کند."""
+        tolerance = PSD_TOLERANCE
+        off_diagonal = tolerance * (1.0 + CORRELATION_TOLERANCE / 2.0)
+        with self.assertRaises(ValidationError):
+            validate_covariance_matrix(
+                [[tolerance, off_diagonal], [off_diagonal, tolerance]]
+            )
+
+    def test_complete_diagonal_pivoting_preserves_input(self):
+        """تعویض سطر و ستون، ورودی معتبر را تغییر نمی‌دهد."""
+        for matrix in (
+            [[1.0, 2.0], [2.0, 4.0]],
+            [[9.0, 3.0, 3.0], [3.0, 2.0, 4.0], [3.0, 4.0, 10.0]],
+        ):
+            with self.subTest(matrix=matrix):
+                snapshot = [row[:] for row in matrix]
+                self.assertIsNone(validate_covariance_matrix(matrix))
+                self.assertEqual(matrix, snapshot)
+
+    def test_scaled_tolerance_has_absolute_floor(self):
+        """مقیاس کوچک کف مطلق دارد و مقیاس بزرگ تلورانس را افزایش می‌دهد."""
+        tolerance = PSD_TOLERANCE
+        for scale in (0.25, 1.0, 4.0):
+            with self.subTest(scale=scale):
+                scaled = tolerance * max(1.0, scale)
+                matrix = [[scale, scale, 0.0],
+                          [scale, scale, 2.0 * scaled],
+                          [0.0, 2.0 * scaled, 4.0 * scaled]]
+                self.assertIsNone(validate_covariance_matrix(matrix))
+                matrix[2][2] /= 1.01
+                with self.assertRaises(ValidationError):
+                    validate_covariance_matrix(matrix)
+
+    def test_tolerated_asymmetry_uses_symmetric_average(self):
+        """میانگین دو مثلث با همبستگی کامل مستقل از جهت پذیرفته می‌شود."""
+        delta = COVARIANCE_SYMMETRY_TOLERANCE / 4.0
+        for sign in (-1.0, 1.0):
+            with self.subTest(sign=sign):
+                matrix = [[1.0, 1.0 + sign * delta],
+                          [1.0 - sign * delta, 1.0]]
+                self.assertIsNone(validate_covariance_matrix(matrix))
+
+    def test_statistics_from_prices_covariance_is_psd(self):
+        """کوواریانس قیمت‌ها حتی با بازده روزانه کم‌نوسان معتبر می‌ماند."""
+        for amplitude in (0.1, 1e-4, 1e-8):
+            with self.subTest(amplitude=amplitude):
+                prices = []
+                for changes in ((1, -1, 2), (2, 1, -1), (1, -1, 2)):
+                    series = [100.0]
+                    for change in changes:
+                        series.append(series[-1] * (1.0 + change * amplitude))
+                    prices.append(series)
+                for periods in (1, 252):
+                    with self.subTest(periods=periods):
+                        result = statistics_from_prices(["الف", "ب", "ج"],
+                                                        prices, periods)
+                        self.assertIsNone(validate_covariance_matrix(result.covariance))
 
 
 if __name__ == "__main__":
