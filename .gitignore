@@ -19,3 +19,6 @@ Thumbs.db
 
 # mutmut mutation-testing cache and results
 mutants/
+
+# Personal progress log, kept local only
+Achievements.md
