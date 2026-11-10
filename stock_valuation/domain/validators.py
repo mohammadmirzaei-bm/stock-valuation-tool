@@ -1,7 +1,7 @@
 """اعتبارسنجی ورودی‌های مدل‌های ارزیابی سهام.
 
 توابع این ماژول خالص (pure) و قطعی هستند، وضعیت سراسری یا نشست برنامه را
-تغییر نمی‌دهند و هیچ وابستگی‌ای به Streamlit ندارند.
+تغییر نمی‌دهند .
 """
 
 import math
@@ -70,6 +70,7 @@ MAX_PERIODS_PER_YEAR = 366
 # تلورانس مطلق تقارن کوواریانس و عبور همبستگی از ۱.
 # هیچ‌کدام نسبت به مقیاس ماتریس نرمال نمی‌شوند.
 COVARIANCE_SYMMETRY_TOLERANCE = 1e-8
+PSD_TOLERANCE = 1e-12
 CORRELATION_TOLERANCE = 1e-8
 
 # بازه مجاز تعداد نقاط مرز کارا و مقدار پیش‌فرض آن
@@ -529,13 +530,19 @@ def validate_covariance_matrix(covariance: List[List[float]]) -> None:
     بیشتر نباشد. قطر باید نامنفی باشد. اگر قطری صفر باشد، کوواریانس همان
     سطر و ستون هم باید در محدوده همان تلورانس صفر باشد. اگر هر دو واریانس
     مثبت باشند، قدر مطلق همبستگی ضمنی نباید از ``1 + CORRELATION_TOLERANCE``
-    بیشتر شود. ورودی تغییر نمی‌کند.
+    بیشتر شود. نیمه‌معین مثبت بودن (PSD) روی میانگین متقارن دو مثلث با حذف
+    متقارن و محورگیری کامل قطری بررسی می‌شود. تلورانس برابر
+    ``PSD_TOLERANCE * max(1.0, max_diag)`` است که ``max_diag`` بزرگ‌ترین
+    واریانس ورودی است؛ ماتریس غیر PSD فراتر از این تلورانس با
+    ``ValidationError`` رد می‌شود. ماتریس PSD منفرد در مرحله اعتبارسنجی
+    معتبر است و حل‌کننده پایین‌دست مسئول تشخیص منفرد بودن است.
+    ورودی تغییر نمی‌کند.
 
     Args:
         covariance (List[List[float]]): ماتریس کوواریانس به ترتیب دارایی‌ها
 
     Raises:
-        ValidationError: اگر شکل، تقارن، قطر یا همبستگی ضمنی نامعتبر باشد
+        ValidationError: اگر شکل، تقارن، قطر، همبستگی ضمنی یا PSD نامعتبر باشد
     """
     if not isinstance(covariance, (list, tuple)) or len(covariance) == 0:
         raise ValidationError("❌ ماتریس کوواریانس باید غیرخالی باشد!")
@@ -577,6 +584,34 @@ def validate_covariance_matrix(covariance: List[List[float]]) -> None:
                 raise ValidationError(
                     "❌ با واریانس صفر، کوواریانس برون‌قطری باید صفر باشد!"
                 )
+            rows[row_index][column_index] = pair
+            rows[column_index][row_index] = pair
+
+    max_diag = max(rows[i][i] for i in range(size))
+    tol = PSD_TOLERANCE * max(1.0, max_diag)
+    rem = [row[:] for row in rows]
+    for k in range(size):
+        pivot_idx = max(range(k, size), key=lambda i: rem[i][i])
+        if rem[k][k] < rem[pivot_idx][pivot_idx]:
+            rem[k], rem[pivot_idx] = rem[pivot_idx], rem[k]
+            for row in rem:
+                row[k], row[pivot_idx] = row[pivot_idx], row[k]
+        diag = rem[k][k]
+        if diag < -tol:
+            raise ValidationError("ماتریس کوواریانس باید نیمه‌معین مثبت (PSD) باشد.")
+        if diag <= tol:
+            for i in range(k, size):
+                if rem[i][i] < -tol:
+                    raise ValidationError("ماتریس کوواریانس باید نیمه‌معین مثبت (PSD) باشد.")
+                for j in range(i + 1, size):
+                    if abs(rem[i][j]) > tol:
+                        raise ValidationError("ماتریس کوواریانس باید نیمه‌معین مثبت (PSD) باشد.")
+            break
+        for i in range(k + 1, size):
+            factor = rem[i][k] / diag
+            for j in range(i, size):
+                rem[i][j] -= factor * rem[k][j]
+                rem[j][i] = rem[i][j]
 
 
 def validate_mean_returns(mean_returns: List[float]) -> None:

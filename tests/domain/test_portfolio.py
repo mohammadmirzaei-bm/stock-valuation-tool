@@ -13,6 +13,11 @@ from dataclasses import FrozenInstanceError
 from stock_valuation.domain.errors import CalculationError, ValidationError
 from stock_valuation.domain.portfolio import (
     PortfolioPoint,
+    _clip_long_only,
+    _gmv_weights,
+    _kkt_weights,
+    _long_only_min_variance,
+    _performance,
     efficient_frontier,
     min_variance_portfolio,
     portfolio_performance,
@@ -381,6 +386,199 @@ class TestDeterminismAndImmutability(unittest.TestCase):
         point = portfolio_point([0.5, 0.5], mu, COV)
         mu[0] = 9.0
         self.assertAlmostEqual(point.expected_return, 0.15, places=12)
+
+
+class TestMutationGaps(unittest.TestCase):
+    """مرزهای عددی، اندازه سبد و انتخاب تکیه‌گاه در حداقل واریانس"""
+
+    def test_nine_assets_allowed_in_performance_helpers(self):
+        weights = [1.0 / 9.0] * 9
+        means = [0.10] * 9
+        covariance = _identity(9)
+        expected, volatility = portfolio_performance(weights, means, covariance)
+        self.assertAlmostEqual(expected, 0.10, places=12)
+        self.assertAlmostEqual(volatility, math.sqrt(0.04 / 9.0), places=12)
+        point = portfolio_point(weights, means, covariance)
+        self.assertAlmostEqual(point.expected_return, 0.10, places=12)
+        self.assertAlmostEqual(point.volatility, math.sqrt(0.04 / 9.0), places=12)
+
+    def test_zero_variance_point_requires_sharpe(self):
+        with self.assertRaises(CalculationError):
+            portfolio_point([1.0, 0.0], [0.02, 0.10],
+                            [[0.0, 0.0], [0.0, 0.04]], RF)
+
+    def test_tiny_negative_variance_is_clamped(self):
+        covariance = [[0.04, -0.04 - 2e-13], [-0.04 - 2e-13, 0.04]]
+        point = portfolio_point([0.5, 0.5], MU, covariance)
+        self.assertAlmostEqual(point.expected_return, 0.15, places=12)
+        self.assertEqual(point.variance, 0.0)
+        self.assertEqual(point.volatility, 0.0)
+        self.assertIsNone(point.sharpe_ratio)
+
+    def test_gmv_short_total_between_zero_and_one(self):
+        point = min_variance_portfolio(MU, _identity(2, 4.0), True)
+        self.assertEqual(point.weights, [0.5, 0.5])
+        self.assertAlmostEqual(point.variance, 2.0, places=12)
+
+    def test_frontier_with_negative_means(self):
+        frontier = efficient_frontier([-0.5, -0.4], COV, False, points=5)
+        self.assertEqual(len(frontier), 5)
+        self.assertAlmostEqual(frontier[-1].expected_return, -0.4, places=12)
+
+    def test_long_only_target_opposite_sign(self):
+        weights = _long_only_min_variance(
+            [-0.1, 0.5], [[0.04, 0.0], [0.0, 0.25]], 0.1
+        )
+        self.assertEqual(len(weights), 2)
+        self.assertAlmostEqual(weights[0], 2.0 / 3.0, places=12)
+        self.assertAlmostEqual(weights[1], 1.0 / 3.0, places=12)
+
+    def test_singular_support_is_skipped(self):
+        covariance = [[0.04, 0.04, 0.01], [0.04, 0.04, 0.01],
+                      [0.01, 0.01, 0.09]]
+        point = min_variance_portfolio([0.10, 0.10, 0.20], covariance, False)
+        self.assertEqual(len(point.weights), 3)
+        for got, want in zip(point.weights, [8.0 / 11.0, 0.0, 3.0 / 11.0]):
+            self.assertAlmostEqual(got, want, places=12)
+
+    def test_tie_keeps_first_support(self):
+        covariance = [[0.04, 0.01, 0.01], [0.01, 0.04, 0.04],
+                      [0.01, 0.04, 0.04]]
+        point = min_variance_portfolio([0.10, 0.15, 0.15], covariance, False)
+        self.assertEqual(len(point.weights), 3)
+        for got, want in zip(point.weights, [0.5, 0.5, 0.0]):
+            self.assertAlmostEqual(got, want, places=12)
+
+
+class TestTangencyMutationGaps(unittest.TestCase):
+    """مرز بازده مازاد و کنار گذاشتن تکیه‌گاه نامعتبر در سبد مماس"""
+
+    def test_short_zero_total_rejected(self):
+        with self.assertRaises(ValidationError):
+            tangency_portfolio([0.13, -0.07], _identity(2), RF, True)
+
+    def test_long_only_zero_total_skipped(self):
+        point = tangency_portfolio([0.13, -0.07], _identity(2), RF, False)
+        self.assertEqual(point.weights, [1.0, 0.0])
+        self.assertAlmostEqual(point.sharpe_ratio, 0.5, places=12)
+
+    def test_short_total_below_one(self):
+        point = tangency_portfolio([0.13, 0.23], _identity(2, 4.0), RF, True)
+        self.assertEqual(len(point.weights), 2)
+        self.assertAlmostEqual(point.weights[0], 1.0 / 3.0, places=12)
+        self.assertAlmostEqual(point.weights[1], 2.0 / 3.0, places=12)
+
+    def test_zero_max_excess_rejected(self):
+        with self.assertRaises(ValidationError):
+            tangency_portfolio([0.03, 0.02], _identity(2), RF, False)
+
+    def test_singular_support_skipped(self):
+        covariance = [[0.04, 0.04, 0.0], [0.04, 0.04, 0.0],
+                      [0.0, 0.0, 0.01]]
+        point = tangency_portfolio([0.13, 0.10, 0.20], covariance, RF, False)
+        self.assertEqual(len(point.weights), 3)
+        for got, want in zip(point.weights, [2.5 / 19.5, 0.0, 17.0 / 19.5]):
+            self.assertAlmostEqual(got, want, places=12)
+
+    def test_clipped_support_skipped(self):
+        point = tangency_portfolio([0.13, -0.02, 0.20], _identity(3), RF, False)
+        self.assertEqual(len(point.weights), 3)
+        for got, want in zip(point.weights, [2.5 / 6.75, 0.0, 4.25 / 6.75]):
+            self.assertAlmostEqual(got, want, places=12)
+
+    def test_tie_keeps_first_support(self):
+        covariance = [[0.04, 0.01, 0.01], [0.01, 0.04, 0.04],
+                      [0.01, 0.04, 0.04]]
+        point = tangency_portfolio([0.13, 0.20, 0.20], covariance, RF, False)
+        self.assertEqual(len(point.weights), 3)
+        for got, want in zip(point.weights, [23.0 / 81.0, 58.0 / 81.0, 0.0]):
+            self.assertAlmostEqual(got, want, places=12)
+
+
+class TestClipLongOnly(unittest.TestCase):
+    """برش منفی کوچک، مرز تلورانس و نرمال‌سازی مستقیم وزن‌ها"""
+
+    def test_zero_total_rejected(self):
+        self.assertIsNone(_clip_long_only([0.0, 0.0]))
+
+    def test_weights_are_normalized(self):
+        self.assertEqual(_clip_long_only([1.0, 3.0]), [0.25, 0.75])
+
+    def test_exact_negative_tolerance_is_clipped(self):
+        self.assertEqual(_clip_long_only([-1e-12, 1.0]), [0.0, 1.0])
+
+    def test_tiny_negative_weight_is_clipped(self):
+        self.assertEqual(_clip_long_only([-5e-13, 1.0]), [0.0, 1.0])
+
+
+class TestDeferredMutationGaps(unittest.TestCase):
+    """مرزهای قابل مشاهده‌ای که هم‌ارزی جبری برای آن‌ها کافی نیست"""
+
+    def test_exact_negative_variance_tolerance_is_clamped(self):
+        """کران برش واریانس مستقیماً و مستقل از اعتبارسنجی PSD سنجیده می‌شود."""
+        _, variance, volatility = _performance(
+            [0.5, 0.5], MU, [[0.0, -2e-12], [-2e-12, 0.0]]
+        )
+        self.assertEqual(variance, 0.0)
+        self.assertEqual(volatility, 0.0)
+
+    def test_gmv_non_psd_is_validation_error(self):
+        """ورودی غیرنیمه‌معین مثبت پیش از حل سبد عمومی رد می‌شود."""
+        covariance = [[1.0, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.5, 1.0]]
+        with self.assertRaises(ValidationError):
+            min_variance_portfolio([0.0, 0.0, 0.5], covariance, True)
+
+    def test_gmv_short_zero_total_is_calculation_error(self):
+        """نگهبان مجموع صفر وزن‌ها با فراخوانی مستقیم کمک‌تابع حفظ می‌شود."""
+        covariance = [[1.0, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.5, 1.0]]
+        with self.assertRaises(CalculationError):
+            _gmv_weights([0.0, 0.0, 0.5], covariance, True)
+
+    def test_all_numerically_singular_supports_rejected(self):
+        # دستگاه KKT با این مقیاس به آستانه محور حل‌کننده می‌رسد.
+        with self.assertRaises(CalculationError):
+            min_variance_portfolio(MU, _identity(2, 1e13), False)
+
+    def test_near_constant_support_at_exact_return_tolerance(self):
+        weights = _long_only_min_variance([0.0, 1e-9], _identity(2, 1.0), 0.0)
+        self.assertEqual(weights, [0.5, 0.5])
+
+    def test_target_at_exact_return_tolerance_is_accepted(self):
+        weights = _long_only_min_variance([0.0, 0.0], _identity(2, 1.0), 1e-9)
+        self.assertEqual(weights, [0.5, 0.5])
+
+    def test_frontier_exact_minimum_range_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            efficient_frontier([0.0, 2e-9], _identity(2, 1.0), True, points=5)
+
+    def test_frontier_endpoint_avoids_cancellation(self):
+        # بازده هدف آخر باید مستقیماً از بیشترین بازده گرفته شود.
+        frontier = efficient_frontier([-1e16, 0.1], _identity(2, 1.0), True, points=5)
+        self.assertEqual(len(frontier), 5)
+        self.assertEqual(frontier[-1].expected_return, 0.1)
+
+    def test_kkt_general_equality_constraint(self):
+        # قرارداد عمومی این کمک‌تابع به قید مجموع وزن‌ها محدود نیست.
+        weights = _kkt_weights(_identity(2, 1.0), [[1.0, 0.0]], [1.0])
+        self.assertEqual(weights, [1.0, 0.0])
+
+    def test_tangency_no_solvable_support_is_calculation_error(self):
+        with self.assertRaises(CalculationError):
+            tangency_portfolio(MU, _identity(2, 0.0), RF, False)
+
+    def test_tangency_zero_variance_solvable_support_is_skipped(self):
+        """نقص PSD در تلورانس مقیاس‌شده می‌ماند و تکیه‌گاه با واریانس صفر رد می‌شود."""
+        covariance = [[1.0, -1.0, 0.5], [-1.0, 1.0, 0.5], [0.5, 0.5, 2e6]]
+        point = tangency_portfolio([0.0, 0.0, 0.5], covariance, 0.0, False)
+        self.assertEqual(point.weights, [0.0, 0.0, 1.0])
+        self.assertEqual(point.sharpe_ratio, 0.5 / math.sqrt(2e6))
+
+    def test_tangency_zero_variance_does_not_stop_support_search(self):
+        small = 1e-8
+        covariance = [[0.0, small, 0.0], [small, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        point = tangency_portfolio([0.0, small, small], covariance, 0.0, False)
+        self.assertEqual(point.weights, [0.0, 0.5, 0.5])
+        self.assertEqual(point.variance, 0.5)
 
 
 if __name__ == "__main__":

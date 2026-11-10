@@ -81,6 +81,10 @@ class TestDcfScenarios(unittest.TestCase):
         self.assertEqual(identical.expected_value_per_share, identical.scenarios[0].value_per_share)
         self.assertEqual((identical.worst_scenario, identical.best_scenario), ("bear", "bear"))
 
+    def test_market_price_preserved(self):
+        """قیمت بازار در خروجی تجمیعی نیز حفظ می‌شود."""
+        self.assertEqual(self._result(market_price=150.0).market_price, 150.0)
+
     def test_market_upside_and_probability(self):
         result = self._result(market_price=150.0)
         for row in result.scenarios:
@@ -249,6 +253,22 @@ class TestDcfSensitivity(unittest.TestCase):
         params.update(overrides)
         return dcf_sensitivity(**params)
 
+    def test_bridge_items_passthrough(self):
+        """اجزای پل ارزش در حالت پایه و سلول غیرمرکزی منتقل می‌شوند."""
+        bridge = dict(cash=500.0, debt=1500.0,
+                      minority_interest=50.0, preferred_equity=25.0)
+        result = self._result(**bridge)
+        base = dcf_valuation(_reference_dcf_projections(), self.WACC, self.GROWTH,
+                             self.SHARES, self.TAX, **bridge)
+        self.assertEqual(result.base_value_per_share, base.value_per_share)
+        self.assertEqual(result.base_enterprise_value, base.enterprise_value)
+        row, col = 2, 3
+        cell = dcf_valuation(_reference_dcf_projections(),
+                             result.wacc_values[row], result.growth_values[col],
+                             self.SHARES, self.TAX, **bridge)
+        self.assertEqual(result.value_per_share[row][col], cell.value_per_share)
+        self.assertEqual(result.enterprise_value[row][col], cell.enterprise_value)
+
     def test_center_cell_equals_base_case(self):
         result = self._result()
         base = dcf_valuation(
@@ -268,6 +288,12 @@ class TestDcfSensitivity(unittest.TestCase):
         self.assertEqual(result.base_enterprise_value, base.enterprise_value)
         self.assertEqual(result.base_wacc, self.WACC)
         self.assertEqual(result.base_terminal_growth, self.GROWTH)
+
+    def test_axes_quantized_to_ten_decimal_places(self):
+        """نویز رقم یازدهم ورودی نباید در محورهای حساسیت باقی بماند."""
+        result = self._result(wacc_rate=0.10000000004, terminal_growth=0.03000000004)
+        self.assertEqual(result.wacc_values, [0.08, 0.09, 0.1, 0.11, 0.12])
+        self.assertEqual(result.growth_values, [0.02, 0.025, 0.03, 0.035, 0.04])
 
     def test_axes_ascending_centered_without_float_noise(self):
         result = self._result()
@@ -410,6 +436,79 @@ class TestReverseDcf(unittest.TestCase):
         }
         params.update(overrides)
         return reverse_dcf_implied_growth(**params)
+
+    def test_endpoint_values_include_bridge_items(self):
+        """ارزش دو انتهای بازه جستجو شامل اقلیت و سهام ممتاز است."""
+        bridge = dict(cash=self.CASH, debt=self.DEBT,
+                      minority_interest=50.0, preferred_equity=25.0)
+        price = dcf_valuation(_reference_dcf_projections(), self.WACC, self.GROWTH,
+                              self.SHARES, self.TAX, **bridge).value_per_share
+        result = self._solve(price, **bridge)
+        expected_min = dcf_valuation(
+            _reference_dcf_projections(), self.WACC, REVERSE_DCF_MIN_GROWTH,
+            self.SHARES, self.TAX, **bridge,
+        ).value_per_share
+        expected_max = dcf_valuation(
+            _reference_dcf_projections(), self.WACC, self.WACC - validators.MIN_SPREAD,
+            self.SHARES, self.TAX, **bridge,
+        ).value_per_share
+        self.assertEqual(result.value_per_share_at_min_growth, expected_min)
+        self.assertEqual(result.value_per_share_at_max_growth, expected_max)
+
+    def test_exact_min_endpoint_returns_boundary_growth(self):
+        """قیمت دقیق انتهای پایین همان رشد مرزی را برمی‌گرداند."""
+        result = self._solve(self._price_at(REVERSE_DCF_MIN_GROWTH))
+        self.assertEqual(result.status, "solved")
+        self.assertEqual(result.implied_growth, REVERSE_DCF_MIN_GROWTH)
+
+    def test_exact_max_endpoint_returns_boundary_growth(self):
+        """قیمت دقیق انتهای بالا همان رشد مرزی را برمی‌گرداند."""
+        growth = self.WACC - validators.MIN_SPREAD
+        result = self._solve(self._price_at(growth))
+        self.assertEqual(result.status, "solved")
+        self.assertEqual(result.implied_growth, growth)
+
+    def test_exact_midpoint_returns_midpoint_growth(self):
+        """تطابق دقیق قیمت در اولین نصف‌سازی نباید جستجو را ادامه دهد."""
+        projections = [CashFlowProjection(100.0, 0.0, 0.0, 0.0)]
+        growth = (REVERSE_DCF_MIN_GROWTH + (0.1 - validators.MIN_SPREAD)) / 2
+        price = dcf_valuation(projections, 0.1, growth, 1.0, 0.0).value_per_share
+        result = reverse_dcf_implied_growth(projections, 0.1, 1.0, 0.0, price)
+        self.assertEqual(result.status, "solved")
+        self.assertEqual(result.implied_growth, growth)
+        self.assertEqual(result.equity_value, price)
+
+    def test_price_within_scaled_endpoint_tolerance_is_solved(self):
+        """تلورانس نسبی قیمت بزرگ در تشخیص کرانه حفظ می‌شود."""
+        projections = [CashFlowProjection(100.0, 0.0, 0.0, 0.0)]
+        minimum = dcf_valuation(projections, 0.1, REVERSE_DCF_MIN_GROWTH,
+                                1.0, 0.0).value_per_share
+        result = reverse_dcf_implied_growth(
+            projections, 0.1, 1.0, 0.0, minimum * (1.0 - 0.5e-9)
+        )
+        self.assertEqual(result.status, "solved")
+        self.assertEqual(result.implied_growth, REVERSE_DCF_MIN_GROWTH)
+
+    def test_small_price_outside_absolute_endpoint_tolerance_is_unsolved(self):
+        """تلورانس مطلق قیمت کوچک نباید دو برابر شود."""
+        projections = [CashFlowProjection(0.001, 0.0, 0.0, 0.0)]
+        minimum = dcf_valuation(projections, 0.1, REVERSE_DCF_MIN_GROWTH,
+                                1.0, 0.0).value_per_share
+        result = reverse_dcf_implied_growth(projections, 0.1, 1.0, 0.0,
+                                            minimum - 1.5e-9)
+        self.assertEqual(result.status, "market_price_below_range")
+        self.assertIsNone(result.implied_growth)
+
+    def test_width_fallback_returns_growth_when_price_cancels(self):
+        """وقتی تفریق بدهی بزرگ تطابق قیمت را ناممکن می‌کند، گارد عرض بازه فعال است."""
+        projections = [CashFlowProjection(1e12, 0.0, 0.0, 0.0)]
+        result = reverse_dcf_implied_growth(
+            projections, 0.1, 1.0, 0.0, 1.0001, debt=14285714285713.283
+        )
+        self.assertEqual(result.status, "solved")
+        self.assertIsNotNone(result.implied_growth)
+        self.assertLess(abs(result.implied_growth - 0.03), 1e-12)
+        self.assertTrue(math.isfinite(result.enterprise_value))
 
     def test_round_trip_recovers_growth(self):
         price = self._price_at(self.GROWTH)

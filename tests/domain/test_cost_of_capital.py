@@ -61,5 +61,20 @@ class TestWacc(unittest.TestCase):
             wacc(600.0, 400.0, float("inf"), 0.06, 0.25)
 
 
+class TestWaccBoundaries(unittest.TestCase):
+    """کرانه سرمایه کل و بازتاب ورودی‌ها در تجزیه WACC"""
+
+    def test_small_total_capital_accepted_and_echo_fields(self):
+        # سرمایه کل 0.5 معتبر است؛ مرز رد صفر است، نه یک.
+        breakdown = wacc_breakdown(0.3, 0.2, 0.12, 0.06, 0.25)
+        self.assertAlmostEqual(breakdown.wacc, 0.09, places=10)
+        self.assertAlmostEqual(breakdown.equity, 0.3, places=10)
+        self.assertAlmostEqual(breakdown.debt, 0.2, places=10)
+        self.assertAlmostEqual(breakdown.total_capital, 0.5, places=10)
+        self.assertAlmostEqual(breakdown.cost_of_equity, 0.12, places=10)
+        self.assertAlmostEqual(breakdown.cost_of_debt, 0.06, places=10)
+        self.assertAlmostEqual(breakdown.tax_rate, 0.25, places=10)
+
+
 if __name__ == "__main__":
     unittest.main()

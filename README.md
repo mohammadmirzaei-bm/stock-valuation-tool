@@ -466,8 +466,10 @@ docker logs -f <container>                    # لاگ uvicorn بدون بافر
 - `Dockerfile` تنها `requirements-api.txt` و پوشه `stock_valuation/` را `COPY`
   می‌کند، پس کد دامنه و API کل محتوای اجرایی تصویرند.
 - `.dockerignore` محیط‌های مجازی، کش پایتون، `.git/`، `frontend/`، `tests/`،
-  آرتیفکت‌های بیلد و مستندات (`README.md`، `Achievements.md`) را از بستر بیلد
-  حذف می‌کند تا تغییر آن‌ها کش لایه‌ها را باطل نکند.
+  کش mutation testing (`mutants/` و `.mutmut_pkgs/`)، مستندات، `setup.cfg` و
+  فهرست وابستگی‌های محلی را از بستر بیلد حذف می‌کند تا `context` ارسالی به
+  daemon کوچک بماند؛ پوشه `mutants/` نسخه کاملی از کد دامنه و تست‌هاست و تنها
+  بیش از سی برابر محتوای واقعی تصویر حجم دارد.
 - وابستگی‌ها پیش از کد کپی می‌شوند تا تغییر سورس، لایه `pip install` را
   بازسازی نکند.
 

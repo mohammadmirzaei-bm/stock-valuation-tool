@@ -143,5 +143,47 @@ class TestSolve(unittest.TestCase):
         self.assertEqual(rhs, rhs_snapshot)
 
 
+class TestInputGuards(unittest.TestCase):
+    """نگهبان‌های نوع و شکل: ورودی خالی، غیرفهرست و bool رد می‌شود"""
+
+    def test_empty_vectors_rejected(self):
+        with self.assertRaises(ValidationError):
+            dot([], [])
+
+    def test_non_list_vector_rejected(self):
+        with self.assertRaises(ValidationError):
+            dot(None, [1.0])
+
+    def test_empty_matrix_rejected(self):
+        with self.assertRaises(ValidationError):
+            mat_vec([], [1.0])
+
+    def test_non_list_matrix_rejected(self):
+        with self.assertRaises(ValidationError):
+            mat_vec(None, [1.0])
+
+    def test_non_list_row_rejected(self):
+        with self.assertRaises(ValidationError):
+            mat_vec([[1.0], None], [1.0])
+
+    def test_bool_element_rejected(self):
+        with self.assertRaises(ValidationError):
+            dot([True], [1.0])
+
+    def test_submatrix_index_beyond_rows_of_wide_matrix_rejected(self):
+        # اندیس 2 برای ستون‌ها معتبر است ولی برای سطرها خارج از بازه است.
+        with self.assertRaises(ValidationError):
+            submatrix([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [2])
+
+    def test_submatrix_index_beyond_columns_of_tall_matrix_rejected(self):
+        # اندیس 2 برای سطرها معتبر است ولی برای ستون‌ها خارج از بازه است.
+        with self.assertRaises(ValidationError):
+            submatrix([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], [2])
+
+    def test_pivot_exactly_at_tolerance_accepted(self):
+        # قرارداد: فقط محور «کمتر از» تلورانس رد می‌شود؛ تساوی معتبر است.
+        self.assertEqual(solve([[1e-12]], [1e-12]), [1.0])
+
+
 if __name__ == "__main__":
     unittest.main()

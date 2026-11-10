@@ -1,0 +1,5007 @@
+{
+  "components": {
+    "schemas": {
+      "AllocationPointResult": {
+        "description": "نقطه کمکی خط تخصیص سرمایه؛ معادل `AllocationPoint` دامنه.",
+        "properties": {
+          "expected_return": {
+            "description": "بازده مورد انتظار (اعشاری)",
+            "title": "Expected Return",
+            "type": "number"
+          },
+          "expected_return_percent": {
+            "description": "بازده مورد انتظار به درصد",
+            "title": "Expected Return Percent",
+            "type": "number"
+          },
+          "volatility": {
+            "description": "نوسان (اعشاری)",
+            "title": "Volatility",
+            "type": "number"
+          },
+          "volatility_percent": {
+            "description": "نوسان به درصد",
+            "title": "Volatility Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "expected_return",
+          "expected_return_percent",
+          "volatility",
+          "volatility_percent"
+        ],
+        "title": "AllocationPointResult",
+        "type": "object"
+      },
+      "AnnualDividendYieldRequest": {
+        "additionalProperties": false,
+        "description": "ورودی بازده سالانه سود تقسیمی؛ `(D / P) × 100`.",
+        "properties": {
+          "dividend": {
+            "description": "سود تقسیمی سالانه",
+            "exclusiveMinimum": 0.0,
+            "title": "Dividend",
+            "type": "number"
+          },
+          "price": {
+            "description": "قیمت سهام",
+            "exclusiveMinimum": 0.0,
+            "title": "Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dividend",
+          "price"
+        ],
+        "title": "AnnualDividendYieldRequest",
+        "type": "object"
+      },
+      "AnnualDividendYieldResult": {
+        "description": "پاسخ بازده سالانه سود تقسیمی؛ معادل `annual_dividend_yield_percent`.\n\nAttributes:\n    dividend_yield_percent: بازده سالانه به درصد\n    dividend: سود تقسیمی ورودی، نمایش مجدد\n    price: قیمت ورودی، نمایش مجدد",
+        "properties": {
+          "dividend": {
+            "description": "سود تقسیمی سالانه",
+            "title": "Dividend",
+            "type": "number"
+          },
+          "dividend_yield_percent": {
+            "description": "بازده سالانه سود تقسیمی (درصد)",
+            "title": "Dividend Yield Percent",
+            "type": "number"
+          },
+          "price": {
+            "description": "قیمت سهام",
+            "title": "Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dividend_yield_percent",
+          "dividend",
+          "price"
+        ],
+        "title": "AnnualDividendYieldResult",
+        "type": "object"
+      },
+      "AssetPointResult": {
+        "description": "یک دارایی برای نمودار پراکندگی؛ معادل `AssetPoint` دامنه.",
+        "properties": {
+          "expected_return": {
+            "description": "بازده مورد انتظار سالانه (اعشاری)",
+            "title": "Expected Return",
+            "type": "number"
+          },
+          "expected_return_percent": {
+            "description": "بازده مورد انتظار به درصد",
+            "title": "Expected Return Percent",
+            "type": "number"
+          },
+          "name": {
+            "description": "نام دارایی",
+            "title": "Name",
+            "type": "string"
+          },
+          "volatility": {
+            "description": "نوسان سالانه (اعشاری)",
+            "title": "Volatility",
+            "type": "number"
+          },
+          "volatility_percent": {
+            "description": "نوسان سالانه به درصد",
+            "title": "Volatility Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "expected_return",
+          "expected_return_percent",
+          "volatility",
+          "volatility_percent"
+        ],
+        "title": "AssetPointResult",
+        "type": "object"
+      },
+      "CapitalAllocationLineResult": {
+        "description": "خط تخصیص سرمایه؛ معادل `CapitalAllocationLine` دامنه.",
+        "properties": {
+          "points": {
+            "description": "دو نقطه کمکی: نرخ بدون ریسک با نوسان صفر، و امتداد نوسان سبد مماس",
+            "items": {
+              "$ref": "#/components/schemas/AllocationPointResult"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "risk_free_rate": {
+            "description": "عرض از مبدأ (اعشاری)",
+            "title": "Risk Free Rate",
+            "type": "number"
+          },
+          "risk_free_rate_percent": {
+            "description": "نرخ بدون ریسک به درصد",
+            "title": "Risk Free Rate Percent",
+            "type": "number"
+          },
+          "slope": {
+            "description": "شیب؛ نسبت شارپ سبد مماس",
+            "title": "Slope",
+            "type": "number"
+          }
+        },
+        "required": [
+          "risk_free_rate",
+          "risk_free_rate_percent",
+          "slope",
+          "points"
+        ],
+        "title": "CapitalAllocationLineResult",
+        "type": "object"
+      },
+      "CapmRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل CAPM؛ `r = r_f + β × (r_m − r_f)`.",
+        "properties": {
+          "beta": {
+            "description": "ضریب بتای سهام",
+            "exclusiveMinimum": 0.0,
+            "title": "Beta",
+            "type": "number"
+          },
+          "market_return": {
+            "description": "بازده مورد انتظار بازار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "Market Return",
+            "type": "number"
+          },
+          "risk_free_rate": {
+            "description": "نرخ بدون ریسک (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "Risk Free Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "risk_free_rate",
+          "beta",
+          "market_return"
+        ],
+        "title": "CapmRequest",
+        "type": "object"
+      },
+      "CapmResult": {
+        "description": "پاسخ مدل CAPM؛ معادل `CapmBreakdown`.\n\nAttributes:\n    required_return: نرخ بازده مورد انتظار سهام (اعشاری)\n    required_return_percent: نرخ بازده مورد انتظار سهام (درصد)\n    risk_free_rate: نرخ بدون ریسک (اعشاری)\n    risk_free_rate_percent: نرخ بدون ریسک (درصد)\n    beta: ضریب بتای سهام\n    market_return: بازده مورد انتظار بازار (اعشاری)\n    market_return_percent: بازده مورد انتظار بازار (درصد)، نمایش دامنه ندارد\n    market_risk_premium: صرف ریسک بازار rₘ − r_f (اعشاری)\n    market_risk_premium_percent: صرف ریسک بازار (درصد)\n    risk_premium: صرف ریسک سهام β × (rₘ − r_f) (اعشاری)\n    risk_premium_percent: صرف ریسک سهام (درصد)",
+        "properties": {
+          "beta": {
+            "description": "ضریب بتای سهام",
+            "title": "Beta",
+            "type": "number"
+          },
+          "market_return": {
+            "description": "بازده مورد انتظار بازار (اعشاری)",
+            "title": "Market Return",
+            "type": "number"
+          },
+          "market_return_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده مورد انتظار بازار (درصد)",
+            "title": "Market Return Percent"
+          },
+          "market_risk_premium": {
+            "description": "صرف ریسک بازار (اعشاری)",
+            "title": "Market Risk Premium",
+            "type": "number"
+          },
+          "market_risk_premium_percent": {
+            "description": "صرف ریسک بازار (درصد)",
+            "title": "Market Risk Premium Percent",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار سهام (اعشاری)",
+            "title": "Required Return",
+            "type": "number"
+          },
+          "required_return_percent": {
+            "description": "نرخ بازده مورد انتظار سهام (درصد)",
+            "title": "Required Return Percent",
+            "type": "number"
+          },
+          "risk_free_rate": {
+            "description": "نرخ بدون ریسک (اعشاری)",
+            "title": "Risk Free Rate",
+            "type": "number"
+          },
+          "risk_free_rate_percent": {
+            "description": "نرخ بدون ریسک (درصد)",
+            "title": "Risk Free Rate Percent",
+            "type": "number"
+          },
+          "risk_premium": {
+            "description": "صرف ریسک سهام (اعشاری)",
+            "title": "Risk Premium",
+            "type": "number"
+          },
+          "risk_premium_percent": {
+            "description": "صرف ریسک سهام (درصد)",
+            "title": "Risk Premium Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "required_return",
+          "required_return_percent",
+          "risk_free_rate",
+          "risk_free_rate_percent",
+          "beta",
+          "market_return",
+          "market_risk_premium",
+          "market_risk_premium_percent",
+          "risk_premium",
+          "risk_premium_percent"
+        ],
+        "title": "CapmResult",
+        "type": "object"
+      },
+      "CashFlowProjectionInput": {
+        "additionalProperties": false,
+        "description": "یک سال اجزای FCFF؛ سال = اندیس در فهرست درخواست.",
+        "properties": {
+          "capex": {
+            "description": "مخارج سرمایه‌ای؛ مثبت = خروج نقد",
+            "title": "Capex",
+            "type": "number"
+          },
+          "delta_nwc": {
+            "description": "تغییر سرمایه در گردش؛ مثبت = افزایش NWC",
+            "title": "Delta Nwc",
+            "type": "number"
+          },
+          "depreciation": {
+            "description": "استهلاک و هزینه‌های غیرنقدی",
+            "title": "Depreciation",
+            "type": "number"
+          },
+          "ebit": {
+            "description": "سود عملیاتی قبل از بهره و مالیات",
+            "title": "Ebit",
+            "type": "number"
+          }
+        },
+        "required": [
+          "ebit",
+          "depreciation",
+          "capex",
+          "delta_nwc"
+        ],
+        "title": "CashFlowProjectionInput",
+        "type": "object"
+      },
+      "CompletePortfolioResult": {
+        "description": "سبد کامل؛ معادل `CompletePortfolio` دامنه.",
+        "properties": {
+          "clipped_to_zero": {
+            "description": "آیا y* به‌خاطر بازده مازاد نامثبت صفر شده است؟",
+            "title": "Clipped To Zero",
+            "type": "boolean"
+          },
+          "expected_return": {
+            "description": "بازده سبد کامل (اعشاری)",
+            "title": "Expected Return",
+            "type": "number"
+          },
+          "expected_return_percent": {
+            "description": "بازده سبد کامل به درصد",
+            "title": "Expected Return Percent",
+            "type": "number"
+          },
+          "leverage_capped": {
+            "description": "آیا y* به سقف اهرم بریده شده است؟",
+            "title": "Leverage Capped",
+            "type": "boolean"
+          },
+          "risk_aversion": {
+            "description": "ضریب ریسک‌گریزی",
+            "title": "Risk Aversion",
+            "type": "number"
+          },
+          "risk_free_weight": {
+            "description": "وزن دارایی بدون ریسک",
+            "title": "Risk Free Weight",
+            "type": "number"
+          },
+          "risk_free_weight_percent": {
+            "description": "وزن دارایی بدون ریسک به درصد",
+            "title": "Risk Free Weight Percent",
+            "type": "number"
+          },
+          "risky_weights": {
+            "description": "وزن دارایی‌های ریسک‌دار",
+            "items": {
+              "type": "number"
+            },
+            "title": "Risky Weights",
+            "type": "array"
+          },
+          "risky_weights_percent": {
+            "description": "وزن دارایی‌های ریسک‌دار به درصد",
+            "items": {
+              "type": "number"
+            },
+            "title": "Risky Weights Percent",
+            "type": "array"
+          },
+          "tangency_weight": {
+            "description": "وزن سبد مماس پس از برش (y*)",
+            "title": "Tangency Weight",
+            "type": "number"
+          },
+          "tangency_weight_percent": {
+            "description": "وزن سبد مماس به درصد",
+            "title": "Tangency Weight Percent",
+            "type": "number"
+          },
+          "volatility": {
+            "description": "نوسان سبد کامل (اعشاری)",
+            "title": "Volatility",
+            "type": "number"
+          },
+          "volatility_percent": {
+            "description": "نوسان سبد کامل به درصد",
+            "title": "Volatility Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "risk_aversion",
+          "tangency_weight",
+          "tangency_weight_percent",
+          "risk_free_weight",
+          "risk_free_weight_percent",
+          "risky_weights",
+          "risky_weights_percent",
+          "expected_return",
+          "expected_return_percent",
+          "volatility",
+          "volatility_percent",
+          "leverage_capped",
+          "clipped_to_zero"
+        ],
+        "title": "CompletePortfolioResult",
+        "type": "object"
+      },
+      "DcfRequest": {
+        "additionalProperties": false,
+        "description": "ورودی ارزش‌گذاری DCF؛ کرانه‌های عددی در دامنه اعمال می‌شوند.",
+        "properties": {
+          "cash": {
+            "default": 0.0,
+            "description": "موجودی نقد و معادل",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "default": 0.0,
+            "description": "بدهی بهره‌دار",
+            "title": "Debt",
+            "type": "number"
+          },
+          "minority_interest": {
+            "default": 0.0,
+            "description": "منافع اقلیت",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "preferred_equity": {
+            "default": 0.0,
+            "description": "سهام ممتاز",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "projections": {
+            "description": "پیش‌بینی سالانه اجزای FCFF؛ سال = اندیس از ۱",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowProjectionInput"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Projections",
+            "type": "array"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام",
+            "title": "Shares Outstanding",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات سراسری (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          },
+          "terminal_growth": {
+            "description": "نرخ رشد پایانی (اعشاری)",
+            "title": "Terminal Growth",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC / تنزیل (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          }
+        },
+        "required": [
+          "projections",
+          "wacc",
+          "terminal_growth",
+          "shares_outstanding",
+          "tax_rate"
+        ],
+        "title": "DcfRequest",
+        "type": "object"
+      },
+      "DcfResult": {
+        "description": "پاسخ DCF؛ معادل `DcfBreakdown` دامنه.",
+        "properties": {
+          "cash": {
+            "description": "موجودی نقد",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "description": "بدهی",
+            "title": "Debt",
+            "type": "number"
+          },
+          "enterprise_value": {
+            "description": "ارزش بنگاه (EV)",
+            "title": "Enterprise Value",
+            "type": "number"
+          },
+          "equity_value": {
+            "description": "ارزش حقوق صاحبان سهام",
+            "title": "Equity Value",
+            "type": "number"
+          },
+          "minority_interest": {
+            "description": "منافع اقلیت",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "preferred_equity": {
+            "description": "سهام ممتاز",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "pv_fcff_total": {
+            "description": "مجموع ارزش فعلی FCFFهای دوره صریح",
+            "title": "Pv Fcff Total",
+            "type": "number"
+          },
+          "pv_terminal_value": {
+            "description": "ارزش فعلی ارزش انتهای دوره",
+            "title": "Pv Terminal Value",
+            "type": "number"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام",
+            "title": "Shares Outstanding",
+            "type": "number"
+          },
+          "terminal_growth": {
+            "description": "نرخ رشد پایانی (اعشاری)",
+            "title": "Terminal Growth",
+            "type": "number"
+          },
+          "terminal_growth_percent": {
+            "description": "نرخ رشد پایانی (درصد)",
+            "title": "Terminal Growth Percent",
+            "type": "number"
+          },
+          "terminal_value": {
+            "description": "ارزش انتهای دوره (تنزیل‌نشده)",
+            "title": "Terminal Value",
+            "type": "number"
+          },
+          "terminal_value_share_percent": {
+            "description": "سهم ارزش فعلی انتهای دوره از EV (درصد)",
+            "title": "Terminal Value Share Percent",
+            "type": "number"
+          },
+          "value_per_share": {
+            "description": "ارزش هر سهم",
+            "title": "Value Per Share",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          },
+          "wacc_percent": {
+            "description": "نرخ WACC (درصد)",
+            "title": "Wacc Percent",
+            "type": "number"
+          },
+          "years": {
+            "description": "جدول سالانه پیش‌بینی",
+            "items": {
+              "$ref": "#/components/schemas/FcffYearRowResult"
+            },
+            "title": "Years",
+            "type": "array"
+          }
+        },
+        "required": [
+          "enterprise_value",
+          "equity_value",
+          "value_per_share",
+          "wacc",
+          "wacc_percent",
+          "terminal_growth",
+          "terminal_growth_percent",
+          "terminal_value",
+          "pv_terminal_value",
+          "pv_fcff_total",
+          "cash",
+          "debt",
+          "minority_interest",
+          "preferred_equity",
+          "shares_outstanding",
+          "terminal_value_share_percent",
+          "years"
+        ],
+        "title": "DcfResult",
+        "type": "object"
+      },
+      "DcfScenarioInput": {
+        "additionalProperties": false,
+        "description": "ورودی یک سناریوی نام‌گذاری‌شدهٔ DCF.",
+        "properties": {
+          "name": {
+            "description": "نام یکتای سناریو",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "probability": {
+            "description": "احتمال سناریو؛ بین صفر و یک",
+            "title": "Probability",
+            "type": "number"
+          },
+          "projections": {
+            "description": "پیش‌بینی سالانه اجزای FCFF",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowProjectionInput"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Projections",
+            "type": "array"
+          },
+          "terminal_growth": {
+            "description": "نرخ رشد پایانی سناریو (اعشاری)",
+            "title": "Terminal Growth",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC سناریو (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "probability",
+          "projections",
+          "wacc",
+          "terminal_growth"
+        ],
+        "title": "DcfScenarioInput",
+        "type": "object"
+      },
+      "DcfScenarioRequest": {
+        "additionalProperties": false,
+        "description": "ورودی سناریوهای DCF؛ احتمال‌ها در دامنه بدون نرمال‌سازی بررسی می‌شوند.",
+        "properties": {
+          "cash": {
+            "default": 0.0,
+            "description": "موجودی نقد و معادل",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "default": 0.0,
+            "description": "بدهی بهره‌دار",
+            "title": "Debt",
+            "type": "number"
+          },
+          "market_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "قیمت بازار اختیاری",
+            "title": "Market Price"
+          },
+          "minority_interest": {
+            "default": 0.0,
+            "description": "منافع اقلیت",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "preferred_equity": {
+            "default": 0.0,
+            "description": "سهام ممتاز",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "scenarios": {
+            "description": "سناریوهای نام‌گذاری‌شده؛ مجموع احتمال‌ها برابر یک",
+            "items": {
+              "$ref": "#/components/schemas/DcfScenarioInput"
+            },
+            "maxItems": 5,
+            "minItems": 2,
+            "title": "Scenarios",
+            "type": "array"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام مشترک",
+            "title": "Shares Outstanding",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات مشترک (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "scenarios",
+          "shares_outstanding",
+          "tax_rate"
+        ],
+        "title": "DcfScenarioRequest",
+        "type": "object"
+      },
+      "DcfScenarioResult": {
+        "description": "پاسخ سناریوهای وزنی DCF؛ آینهٔ `ScenarioValuationResult` دامنه.",
+        "properties": {
+          "best_scenario": {
+            "description": "نام نخستین سناریو با بیشترین ارزش",
+            "title": "Best Scenario",
+            "type": "string"
+          },
+          "expected_enterprise_value": {
+            "description": "ارزش مورد انتظار بنگاه",
+            "title": "Expected Enterprise Value",
+            "type": "number"
+          },
+          "expected_equity_value": {
+            "description": "ارزش مورد انتظار حقوق صاحبان سهام",
+            "title": "Expected Equity Value",
+            "type": "number"
+          },
+          "expected_upside": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده بالقوه مورد انتظار (اعشاری)",
+            "title": "Expected Upside"
+          },
+          "expected_upside_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده بالقوه مورد انتظار (درصد)",
+            "title": "Expected Upside Percent"
+          },
+          "expected_value_per_share": {
+            "description": "ارزش مورد انتظار هر سهم",
+            "title": "Expected Value Per Share",
+            "type": "number"
+          },
+          "market_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "قیمت بازار اختیاری",
+            "title": "Market Price"
+          },
+          "max_value_per_share": {
+            "description": "بیشترین ارزش هر سهم",
+            "title": "Max Value Per Share",
+            "type": "number"
+          },
+          "min_value_per_share": {
+            "description": "کمترین ارزش هر سهم",
+            "title": "Min Value Per Share",
+            "type": "number"
+          },
+          "probability_of_upside": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "احتمال ارزش بالاتر از بازار (اعشاری)",
+            "title": "Probability Of Upside"
+          },
+          "probability_of_upside_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "احتمال ارزش بالاتر از بازار (درصد)",
+            "title": "Probability Of Upside Percent"
+          },
+          "scenarios": {
+            "description": "نتایج سناریوها به ترتیب ورودی",
+            "items": {
+              "$ref": "#/components/schemas/ScenarioRowResult"
+            },
+            "title": "Scenarios",
+            "type": "array"
+          },
+          "std_dev_value_per_share": {
+            "description": "انحراف معیار وزنی ارزش هر سهم",
+            "title": "Std Dev Value Per Share",
+            "type": "number"
+          },
+          "worst_scenario": {
+            "description": "نام نخستین سناریو با کمترین ارزش",
+            "title": "Worst Scenario",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenarios",
+          "expected_value_per_share",
+          "expected_enterprise_value",
+          "expected_equity_value",
+          "std_dev_value_per_share",
+          "min_value_per_share",
+          "max_value_per_share",
+          "worst_scenario",
+          "best_scenario",
+          "market_price",
+          "expected_upside",
+          "expected_upside_percent",
+          "probability_of_upside",
+          "probability_of_upside_percent"
+        ],
+        "title": "DcfScenarioResult",
+        "type": "object"
+      },
+      "DcfSensitivityRequest": {
+        "additionalProperties": false,
+        "description": "ورودی ماتریس حساسیت DCF؛ فیلدهای DCF را به ارث می‌برد و فقط\nپارامترهای شبکه (گام‌ها و تعداد نقاط محورها) را اضافه می‌کند.\n\nپیش‌فرض‌ها از ثابت‌های دامنه می‌آیند تا عددها دو جا تکرار نشوند؛\nاعتبارسنجی گام‌ها و تعداد نقاط در دامنه انجام می‌شود.",
+        "properties": {
+          "cash": {
+            "default": 0.0,
+            "description": "موجودی نقد و معادل",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "default": 0.0,
+            "description": "بدهی بهره‌دار",
+            "title": "Debt",
+            "type": "number"
+          },
+          "growth_points": {
+            "default": 5,
+            "description": "تعداد نقاط محور رشد پایانی (فرد؛ ۳ تا ۱۱)",
+            "title": "Growth Points",
+            "type": "integer"
+          },
+          "growth_step": {
+            "default": 0.005,
+            "description": "فاصله نقاط محور رشد پایانی (اعشاری)",
+            "title": "Growth Step",
+            "type": "number"
+          },
+          "minority_interest": {
+            "default": 0.0,
+            "description": "منافع اقلیت",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "preferred_equity": {
+            "default": 0.0,
+            "description": "سهام ممتاز",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "projections": {
+            "description": "پیش‌بینی سالانه اجزای FCFF؛ سال = اندیس از ۱",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowProjectionInput"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Projections",
+            "type": "array"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام",
+            "title": "Shares Outstanding",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات سراسری (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          },
+          "terminal_growth": {
+            "description": "نرخ رشد پایانی (اعشاری)",
+            "title": "Terminal Growth",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC / تنزیل (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          },
+          "wacc_points": {
+            "default": 5,
+            "description": "تعداد نقاط محور WACC (فرد؛ ۳ تا ۱۱)",
+            "title": "Wacc Points",
+            "type": "integer"
+          },
+          "wacc_step": {
+            "default": 0.01,
+            "description": "فاصله نقاط محور WACC (اعشاری)",
+            "title": "Wacc Step",
+            "type": "number"
+          }
+        },
+        "required": [
+          "projections",
+          "wacc",
+          "terminal_growth",
+          "shares_outstanding",
+          "tax_rate"
+        ],
+        "title": "DcfSensitivityRequest",
+        "type": "object"
+      },
+      "DcfSensitivityResult": {
+        "description": "پاسخ ماتریس حساسیت DCF؛ معادل `DcfSensitivityResult` دامنه.\n\nسطرها محور WACC و ستون‌ها محور رشد پایانی هستند؛ `null` یعنی ترکیب\nنامعتبر (مثلاً نقض حداقل اختلاف WACC و رشد).\n\nAttributes:\n    wacc_values: محور سطرها (اعشاری)، صعودی و مرکزچین روی WACC پایه\n    growth_values: محور ستون‌ها (اعشاری)، صعودی و مرکزچین روی رشد پایه\n    wacc_values_percent: محور WACC (درصد)\n    growth_values_percent: محور رشد پایانی (درصد)\n    value_per_share: ماتریس ارزش هر سهم؛ [i][j] ↔ wacc_values[i] × growth_values[j]\n    enterprise_value: ماتریس ارزش بنگاه با همان شکل\n    base_wacc: WACC حالت پایه (اعشاری)\n    base_terminal_growth: نرخ رشد پایانی حالت پایه (اعشاری)\n    base_row: اندیس WACC پایه در wacc_values\n    base_col: اندیس رشد پایه در growth_values\n    base_value_per_share: ارزش هر سهم در حالت پایه\n    base_enterprise_value: ارزش بنگاه در حالت پایه\n    valid_cells: تعداد سلول‌های معتبر\n    total_cells: تعداد کل سلول‌ها",
+        "properties": {
+          "base_col": {
+            "description": "اندیس رشد پایه در محور ستون‌ها",
+            "title": "Base Col",
+            "type": "integer"
+          },
+          "base_enterprise_value": {
+            "description": "ارزش بنگاه در حالت پایه",
+            "title": "Base Enterprise Value",
+            "type": "number"
+          },
+          "base_row": {
+            "description": "اندیس WACC پایه در محور سطرها",
+            "title": "Base Row",
+            "type": "integer"
+          },
+          "base_terminal_growth": {
+            "description": "نرخ رشد پایانی حالت پایه (اعشاری)",
+            "title": "Base Terminal Growth",
+            "type": "number"
+          },
+          "base_value_per_share": {
+            "description": "ارزش هر سهم در حالت پایه",
+            "title": "Base Value Per Share",
+            "type": "number"
+          },
+          "base_wacc": {
+            "description": "نرخ WACC حالت پایه (اعشاری)",
+            "title": "Base Wacc",
+            "type": "number"
+          },
+          "enterprise_value": {
+            "description": "ماتریس ارزش بنگاه؛ null برای ترکیب نامعتبر",
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Enterprise Value",
+            "type": "array"
+          },
+          "growth_values": {
+            "description": "محور ستون‌ها: مقادیر رشد پایانی (اعشاری)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Growth Values",
+            "type": "array"
+          },
+          "growth_values_percent": {
+            "description": "محور رشد پایانی (درصد)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Growth Values Percent",
+            "type": "array"
+          },
+          "total_cells": {
+            "description": "تعداد کل سلول‌های ماتریس",
+            "title": "Total Cells",
+            "type": "integer"
+          },
+          "valid_cells": {
+            "description": "تعداد سلول‌های معتبر ماتریس",
+            "title": "Valid Cells",
+            "type": "integer"
+          },
+          "value_per_share": {
+            "description": "ماتریس ارزش هر سهم؛ null برای ترکیب نامعتبر",
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Value Per Share",
+            "type": "array"
+          },
+          "wacc_values": {
+            "description": "محور سطرها: مقادیر WACC (اعشاری)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Wacc Values",
+            "type": "array"
+          },
+          "wacc_values_percent": {
+            "description": "محور WACC (درصد)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Wacc Values Percent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "wacc_values",
+          "growth_values",
+          "wacc_values_percent",
+          "growth_values_percent",
+          "value_per_share",
+          "enterprise_value",
+          "base_wacc",
+          "base_terminal_growth",
+          "base_row",
+          "base_col",
+          "base_value_per_share",
+          "base_enterprise_value",
+          "valid_cells",
+          "total_cells"
+        ],
+        "title": "DcfSensitivityResult",
+        "type": "object"
+      },
+      "DividendProjectionRequest": {
+        "additionalProperties": false,
+        "description": "ورودی پیش‌بینی سود تقسیمی؛ `Dₜ = D₀(1+g)ᵗ`.",
+        "properties": {
+          "d0": {
+            "description": "سود تقسیمی فعلی",
+            "exclusiveMinimum": 0.0,
+            "title": "D0",
+            "type": "number"
+          },
+          "g": {
+            "description": "نرخ رشد ثابت (اعشاری)، بازه دامنه: ۰ تا ۲",
+            "title": "G",
+            "type": "number"
+          },
+          "periods": {
+            "description": "تعداد دوره‌های پیش‌بینی",
+            "minimum": 1.0,
+            "title": "Periods",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "d0",
+          "g",
+          "periods"
+        ],
+        "title": "DividendProjectionRequest",
+        "type": "object"
+      },
+      "DividendProjectionResult": {
+        "description": "پاسخ پیش‌بینی سود تقسیمی.\n\nAttributes:\n    dividends: سودهای تقسیمی پیش‌بینی‌شده از دوره ۱ تا periods\n    periods: تعداد دوره‌های پیش‌بینی",
+        "properties": {
+          "dividends": {
+            "description": "سودهای تقسیمی پیش‌بینی‌شده",
+            "items": {
+              "type": "number"
+            },
+            "title": "Dividends",
+            "type": "array"
+          },
+          "periods": {
+            "description": "تعداد دوره‌های پیش‌بینی",
+            "title": "Periods",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dividends",
+          "periods"
+        ],
+        "title": "DividendProjectionResult",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "بدنه ثابت پاسخ 400 برای خطاهای دامنه.\n\nساختار سه‌فیلدی برای همه خطاهای `ValidationError` و `CalculationError`\nیکسان است تا فرانت‌اند بتواند با یک شروط واحد خطا را نمایش دهد.\n\nAttributes:\n    error_code: کد نوع خطا (VALIDATION_ERROR یا CALCULATION_ERROR)\n    message: متن خطای دامنه (فارسی)\n    details: جزئیات تکمیلی؛ فعلاً همیشه null است",
+        "properties": {
+          "details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "جزئیات تکمیلی؛ فعلاً null",
+            "title": "Details"
+          },
+          "error_code": {
+            "description": "کد نوع خطا",
+            "title": "Error Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "متن خطای دامنه",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ExpectedReturnRequest": {
+        "additionalProperties": false,
+        "description": "ورودی بازده مورد انتظار؛ `r = (D₁ / P₀) + g`.",
+        "properties": {
+          "d1": {
+            "description": "سود تقسیمی مورد انتظار سال آینده",
+            "exclusiveMinimum": 0.0,
+            "title": "D1",
+            "type": "number"
+          },
+          "g": {
+            "description": "نرخ رشد سود تقسیمی (اعشاری)، بازه دامنه: ۰ تا ۲",
+            "title": "G",
+            "type": "number"
+          },
+          "p0": {
+            "description": "قیمت فعلی سهام",
+            "exclusiveMinimum": 0.0,
+            "title": "P0",
+            "type": "number"
+          }
+        },
+        "required": [
+          "d1",
+          "p0",
+          "g"
+        ],
+        "title": "ExpectedReturnRequest",
+        "type": "object"
+      },
+      "ExpectedReturnResult": {
+        "description": "پاسخ بازده مورد انتظار؛ معادل `ExpectedReturnBreakdown`.\n\nAttributes:\n    r: کل بازده مورد انتظار (اعشاری)\n    total_percent: کل بازده مورد انتظار (درصد)؛ نام فیلد معادل property دامنه\n    dividend_yield: بازده سود تقسیمی (اعشاری)\n    dividend_yield_percent: بازده سود تقسیمی (درصد)\n    capital_gains_yield: بازده رشد سرمایه (اعشاری)\n    capital_gains_yield_percent: بازده رشد سرمایه (درصد)",
+        "properties": {
+          "capital_gains_yield": {
+            "description": "بازده رشد سرمایه (اعشاری)",
+            "title": "Capital Gains Yield",
+            "type": "number"
+          },
+          "capital_gains_yield_percent": {
+            "description": "بازده رشد سرمایه (درصد)",
+            "title": "Capital Gains Yield Percent",
+            "type": "number"
+          },
+          "dividend_yield": {
+            "description": "بازده سود تقسیمی (اعشاری)",
+            "title": "Dividend Yield",
+            "type": "number"
+          },
+          "dividend_yield_percent": {
+            "description": "بازده سود تقسیمی (درصد)",
+            "title": "Dividend Yield Percent",
+            "type": "number"
+          },
+          "r": {
+            "description": "کل بازده مورد انتظار (اعشاری)",
+            "title": "R",
+            "type": "number"
+          },
+          "total_percent": {
+            "description": "کل بازده مورد انتظار (درصد)",
+            "title": "Total Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "r",
+          "total_percent",
+          "dividend_yield",
+          "dividend_yield_percent",
+          "capital_gains_yield",
+          "capital_gains_yield_percent"
+        ],
+        "title": "ExpectedReturnResult",
+        "type": "object"
+      },
+      "FcffYearRowResult": {
+        "description": "یک سطر جدول سالانه DCF؛ معادل `FcffYearRow` دامنه.",
+        "properties": {
+          "capex": {
+            "description": "مخارج سرمایه‌ای",
+            "title": "Capex",
+            "type": "number"
+          },
+          "delta_nwc": {
+            "description": "تغییر سرمایه در گردش",
+            "title": "Delta Nwc",
+            "type": "number"
+          },
+          "depreciation": {
+            "description": "استهلاک",
+            "title": "Depreciation",
+            "type": "number"
+          },
+          "discount_factor": {
+            "description": "ضریب تنزیل",
+            "title": "Discount Factor",
+            "type": "number"
+          },
+          "ebit": {
+            "description": "سود عملیاتی سال",
+            "title": "Ebit",
+            "type": "number"
+          },
+          "fcff": {
+            "description": "جریان نقدی آزاد بنگاه",
+            "title": "Fcff",
+            "type": "number"
+          },
+          "nopat": {
+            "description": "سود عملیاتی بعد از مالیات",
+            "title": "Nopat",
+            "type": "number"
+          },
+          "present_value": {
+            "description": "ارزش فعلی FCFF سال",
+            "title": "Present Value",
+            "type": "number"
+          },
+          "year": {
+            "description": "شماره سال (۱ تا n)",
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "ebit",
+          "nopat",
+          "depreciation",
+          "capex",
+          "delta_nwc",
+          "fcff",
+          "discount_factor",
+          "present_value"
+        ],
+        "title": "FcffYearRowResult",
+        "type": "object"
+      },
+      "FootballFieldRequest": {
+        "additionalProperties": false,
+        "description": "ورودی خلاصه زمین فوتبال از بازه‌های ارزش روش‌های مختلف.",
+        "properties": {
+          "market_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "قیمت بازار اختیاری (متناهی و مثبت)",
+            "title": "Market Price"
+          },
+          "ranges": {
+            "description": "بازه‌های ارزش روش‌ها؛ نام‌ها یکتا و low ≤ mid ≤ high",
+            "items": {
+              "$ref": "#/components/schemas/ValuationRangeInput"
+            },
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Ranges",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ranges"
+        ],
+        "title": "FootballFieldRequest",
+        "type": "object"
+      },
+      "FootballFieldResult": {
+        "description": "پاسخ خلاصه زمین فوتبال؛ معادل `FootballFieldResult` دامنه.",
+        "properties": {
+          "has_overlap": {
+            "description": "آیا همه بازه‌ها ناحیه مشترک دارند؟",
+            "title": "Has Overlap",
+            "type": "boolean"
+          },
+          "market_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "قیمت بازار اختیاری",
+            "title": "Market Price"
+          },
+          "market_price_in_overlap": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "آیا قیمت بازار داخل ناحیه همپوشانی است؟ بدون قیمت بازار null",
+            "title": "Market Price In Overlap"
+          },
+          "mean_of_mids": {
+            "description": "میانگین مقادیر میانی",
+            "title": "Mean Of Mids",
+            "type": "number"
+          },
+          "median_of_mids": {
+            "description": "میانه مقادیر میانی",
+            "title": "Median Of Mids",
+            "type": "number"
+          },
+          "overall_high": {
+            "description": "بیشترین کرانه بالا",
+            "title": "Overall High",
+            "type": "number"
+          },
+          "overall_low": {
+            "description": "کمترین کرانه پایین",
+            "title": "Overall Low",
+            "type": "number"
+          },
+          "overlap_high": {
+            "description": "کمترین کرانه بالا (پایان همپوشانی)",
+            "title": "Overlap High",
+            "type": "number"
+          },
+          "overlap_low": {
+            "description": "بیشترین کرانه پایین (شروع همپوشانی)",
+            "title": "Overlap Low",
+            "type": "number"
+          },
+          "rows": {
+            "description": "ردیف‌ها به ترتیب ورودی",
+            "items": {
+              "$ref": "#/components/schemas/FootballFieldRowResult"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "overall_low",
+          "overall_high",
+          "median_of_mids",
+          "mean_of_mids",
+          "overlap_low",
+          "overlap_high",
+          "has_overlap",
+          "market_price",
+          "market_price_in_overlap"
+        ],
+        "title": "FootballFieldResult",
+        "type": "object"
+      },
+      "FootballFieldRowResult": {
+        "description": "یک ردیف خلاصه زمین فوتبال؛ معادل `FootballFieldRow` دامنه.",
+        "properties": {
+          "high": {
+            "description": "کرانه بالا",
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "description": "کرانه پایین بازه",
+            "title": "Low",
+            "type": "number"
+          },
+          "market_position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "موقعیت قیمت بازار: below، inside یا above؛ بدون قیمت بازار null",
+            "title": "Market Position"
+          },
+          "method": {
+            "description": "نام روش ارزیابی",
+            "title": "Method",
+            "type": "string"
+          },
+          "mid": {
+            "description": "مقدار میانی",
+            "title": "Mid",
+            "type": "number"
+          },
+          "upside_of_mid": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده قیمت میانی نسبت به بازار (اعشاری)؛ بدون قیمت بازار null",
+            "title": "Upside Of Mid"
+          },
+          "upside_of_mid_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده قیمت میانی نسبت به بازار (درصد)؛ بدون قیمت بازار null",
+            "title": "Upside Of Mid Percent"
+          }
+        },
+        "required": [
+          "method",
+          "low",
+          "mid",
+          "high",
+          "upside_of_mid",
+          "upside_of_mid_percent",
+          "market_position"
+        ],
+        "title": "FootballFieldRowResult",
+        "type": "object"
+      },
+      "ForecastRequest": {
+        "additionalProperties": false,
+        "description": "ورودی پیش‌بینی سالانه از محرک‌های درآمد و حاشیه.\n\nهر محرک یا یک عدد است (اعمال به همه سال‌ها) یا فهرستی به طول\nدقیقاً ``years``؛ کرانه‌های عددی در دامنه اعمال می‌شوند.",
+        "properties": {
+          "base_revenue": {
+            "description": "آخرین درآمد تاریخی (متناهی و مثبت)",
+            "title": "Base Revenue",
+            "type": "number"
+          },
+          "capex_pct_revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "نسبت مخارج سرمایه‌ای به درآمد (۰ تا ۱) یا فهرست سالانه",
+            "title": "Capex Pct Revenue"
+          },
+          "da_pct_revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "نسبت استهلاک به درآمد (۰ تا ۱) یا فهرست سالانه",
+            "title": "Da Pct Revenue"
+          },
+          "ebitda_margin": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "حاشیه سود عملیاتی (۰ تا ۱) یا فهرست سالانه",
+            "title": "Ebitda Margin"
+          },
+          "normalize_terminal_year": {
+            "default": false,
+            "description": "نرمال‌سازی آخرین سال به حالت پایدار (Capex = استهلاک)",
+            "title": "Normalize Terminal Year",
+            "type": "boolean"
+          },
+          "nwc_pct_incremental_revenue": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "نسبت سرمایه در گردش به درآمد افزایشی (۰ تا ۱) یا فهرست سالانه",
+            "title": "Nwc Pct Incremental Revenue"
+          },
+          "revenue_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              }
+            ],
+            "description": "نرخ رشد درآمد هر سال (اعشاری؛ بیشتر از −۱۰۰٪) یا یک عدد برای همه سال‌ها",
+            "title": "Revenue Growth"
+          },
+          "terminal_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ رشد پایانی (اعشاری)؛ برای نرمال‌سازی سال پایانی لازم است",
+            "title": "Terminal Growth"
+          },
+          "years": {
+            "description": "تعداد سال‌های پیش‌بینی (۱ تا MAX_PROJECTIONS)",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_revenue",
+          "years",
+          "revenue_growth",
+          "ebitda_margin",
+          "da_pct_revenue",
+          "capex_pct_revenue",
+          "nwc_pct_incremental_revenue"
+        ],
+        "title": "ForecastRequest",
+        "type": "object"
+      },
+      "ForecastResult": {
+        "description": "پاسخ پیش‌بینی؛ معادل `ForecastResult` دامنه.\n\nفیلد `projections` دقیقاً همان شکلی است که `DcfRequest.projections`\nمی‌پذیرد و می‌تواند مستقیماً به نقطه پایانی `/dcf` داده شود.",
+        "properties": {
+          "ebitda": {
+            "description": "EBITDA هر سال",
+            "items": {
+              "type": "number"
+            },
+            "title": "Ebitda",
+            "type": "array"
+          },
+          "projections": {
+            "description": "سطرهای آماده مصرف در مدل DCF (همان شکل DcfRequest.projections)",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowProjectionInput"
+            },
+            "title": "Projections",
+            "type": "array"
+          },
+          "revenues": {
+            "description": "درآمد هر سال",
+            "items": {
+              "type": "number"
+            },
+            "title": "Revenues",
+            "type": "array"
+          },
+          "rows": {
+            "description": "جدول سالانه کامل پیش‌بینی",
+            "items": {
+              "$ref": "#/components/schemas/ForecastYearRowResult"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "projections",
+          "revenues",
+          "ebitda",
+          "rows"
+        ],
+        "title": "ForecastResult",
+        "type": "object"
+      },
+      "ForecastYearRowResult": {
+        "description": "یک سطر جدول پیش‌بینی؛ معادل `ForecastYearRow` دامنه.",
+        "properties": {
+          "capex": {
+            "description": "مخارج سرمایه‌ای (خروج نقد مثبت)",
+            "title": "Capex",
+            "type": "number"
+          },
+          "delta_nwc": {
+            "description": "تغییر سرمایه در گردش؛ مثبت = افزایش NWC",
+            "title": "Delta Nwc",
+            "type": "number"
+          },
+          "depreciation": {
+            "description": "استهلاک سال",
+            "title": "Depreciation",
+            "type": "number"
+          },
+          "ebit": {
+            "description": "سود عملیاتی = EBITDA − استهلاک",
+            "title": "Ebit",
+            "type": "number"
+          },
+          "ebitda": {
+            "description": "سود عملیاتی قبل از استهلاک و مالیات",
+            "title": "Ebitda",
+            "type": "number"
+          },
+          "ebitda_margin": {
+            "description": "حاشیه سود عملیاتی سال (اعشاری)",
+            "title": "Ebitda Margin",
+            "type": "number"
+          },
+          "ebitda_margin_percent": {
+            "description": "حاشیه سود عملیاتی سال (درصد)",
+            "title": "Ebitda Margin Percent",
+            "type": "number"
+          },
+          "growth": {
+            "description": "نرخ رشد درآمد سال (اعشاری)",
+            "title": "Growth",
+            "type": "number"
+          },
+          "growth_percent": {
+            "description": "نرخ رشد درآمد سال (درصد)",
+            "title": "Growth Percent",
+            "type": "number"
+          },
+          "revenue": {
+            "description": "درآمد سال",
+            "title": "Revenue",
+            "type": "number"
+          },
+          "year": {
+            "description": "شماره سال (۱ تا n)",
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "revenue",
+          "growth",
+          "growth_percent",
+          "ebitda",
+          "ebitda_margin",
+          "ebitda_margin_percent",
+          "ebit",
+          "depreciation",
+          "capex",
+          "delta_nwc"
+        ],
+        "title": "ForecastYearRowResult",
+        "type": "object"
+      },
+      "GordonRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل رشد ثابت گوردون؛ `P = D₀(1+g) / (r − g)`.",
+        "properties": {
+          "d0": {
+            "description": "سود تقسیمی فعلی",
+            "exclusiveMinimum": 0.0,
+            "title": "D0",
+            "type": "number"
+          },
+          "g": {
+            "description": "نرخ رشد ثابت (اعشاری)، بازه دامنه: ۰ تا ۲",
+            "title": "G",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          }
+        },
+        "required": [
+          "d0",
+          "g",
+          "r"
+        ],
+        "title": "GordonRequest",
+        "type": "object"
+      },
+      "GordonResult": {
+        "description": "پاسخ مدل رشد ثابت گوردون؛ معادل `GordonBreakdown`.\n\nAttributes:\n    price: قیمت سهام\n    d1: سود تقسیمی سال آینده\n    dividend_yield: بازده سود تقسیمی (اعشاری)\n    dividend_yield_percent: بازده سود تقسیمی (درصد)\n    capital_gains_yield: بازده رشد سرمایه (اعشاری)\n    capital_gains_yield_percent: بازده رشد سرمایه (درصد)\n    required_return: نرخ بازده ورودی، نمایش مجدد (اعشاری)\n    required_return_percent: نرخ بازده ورودی (درصد)\n    growth_rate: نرخ رشد ورودی، نمایش مجدد (اعشاری)\n    growth_rate_percent: نرخ رشد ورودی (درصد)",
+        "properties": {
+          "capital_gains_yield": {
+            "description": "بازده رشد سرمایه (اعشاری)",
+            "title": "Capital Gains Yield",
+            "type": "number"
+          },
+          "capital_gains_yield_percent": {
+            "description": "بازده رشد سرمایه (درصد)",
+            "title": "Capital Gains Yield Percent",
+            "type": "number"
+          },
+          "d1": {
+            "description": "سود تقسیمی سال آینده (D₁)",
+            "title": "D1",
+            "type": "number"
+          },
+          "dividend_yield": {
+            "description": "بازده سود تقسیمی (اعشاری)",
+            "title": "Dividend Yield",
+            "type": "number"
+          },
+          "dividend_yield_percent": {
+            "description": "بازده سود تقسیمی (درصد)",
+            "title": "Dividend Yield Percent",
+            "type": "number"
+          },
+          "growth_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ رشد ورودی (اعشاری)",
+            "title": "Growth Rate"
+          },
+          "growth_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ رشد ورودی (درصد)",
+            "title": "Growth Rate Percent"
+          },
+          "price": {
+            "description": "قیمت سهام",
+            "title": "Price",
+            "type": "number"
+          },
+          "required_return": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ بازده ورودی (اعشاری)",
+            "title": "Required Return"
+          },
+          "required_return_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ بازده ورودی (درصد)",
+            "title": "Required Return Percent"
+          }
+        },
+        "required": [
+          "price",
+          "d1",
+          "dividend_yield",
+          "dividend_yield_percent",
+          "capital_gains_yield",
+          "capital_gains_yield_percent"
+        ],
+        "title": "GordonResult",
+        "type": "object"
+      },
+      "GrowthOpportunitiesRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل فرصت‌های رشد؛ `P = (EPS / r) + NPVGO`.",
+        "properties": {
+          "eps": {
+            "description": "سود هر سهم",
+            "exclusiveMinimum": 0.0,
+            "title": "Eps",
+            "type": "number"
+          },
+          "npvgo": {
+            "description": "ارزش فعلی خالص فرصت‌های رشد؛ می‌تواند منفی باشد",
+            "title": "Npvgo",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          }
+        },
+        "required": [
+          "eps",
+          "r",
+          "npvgo"
+        ],
+        "title": "GrowthOpportunitiesRequest",
+        "type": "object"
+      },
+      "GrowthOpportunitiesResult": {
+        "description": "پاسخ مدل فرصت‌های رشد؛ معادل `GrowthOpportunitiesBreakdown`.\n\nAttributes:\n    total_value: قیمت کل سهام\n    no_growth_value: ارزش سهام بدون رشد (EPS / r)\n    npvgo: ارزش فعلی خالص فرصت‌های رشد\n    growth_share_percent: سهم فرصت‌های رشد از کل ارزش (درصد)",
+        "properties": {
+          "growth_share_percent": {
+            "description": "سهم فرصت‌های رشد از کل ارزش (درصد)",
+            "title": "Growth Share Percent",
+            "type": "number"
+          },
+          "no_growth_value": {
+            "description": "ارزش سهام بدون رشد (EPS / r)",
+            "title": "No Growth Value",
+            "type": "number"
+          },
+          "npvgo": {
+            "description": "ارزش فعلی خالص فرصت‌های رشد",
+            "title": "Npvgo",
+            "type": "number"
+          },
+          "total_value": {
+            "description": "قیمت کل سهام",
+            "title": "Total Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "total_value",
+          "no_growth_value",
+          "npvgo",
+          "growth_share_percent"
+        ],
+        "title": "GrowthOpportunitiesResult",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImpliedCaseResult": {
+        "description": "ارزش تلویحی بر پایه یک ضریب؛ معادل `ImpliedCase` دامنه.",
+        "properties": {
+          "implied_enterprise_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ارزش بنگاه تلویحی؛ برای ضریب‌های حقوق صاحبان سهام null",
+            "title": "Implied Enterprise Value"
+          },
+          "implied_equity_value": {
+            "description": "ارزش حقوق صاحبان سهام تلویحی (منفی کلمپ نمی‌شود)",
+            "title": "Implied Equity Value",
+            "type": "number"
+          },
+          "multiple": {
+            "description": "ضریب به‌کاررفته",
+            "title": "Multiple",
+            "type": "number"
+          },
+          "value_per_share": {
+            "description": "ارزش هر سهم تلویحی",
+            "title": "Value Per Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "multiple",
+          "implied_enterprise_value",
+          "implied_equity_value",
+          "value_per_share"
+        ],
+        "title": "ImpliedCaseResult",
+        "type": "object"
+      },
+      "ImpliedValuationResult": {
+        "description": "پاسخ ارزش‌گذاری نسبی؛ معادل `ImpliedValuation` دامنه.",
+        "properties": {
+          "high": {
+            "$ref": "#/components/schemas/ImpliedCaseResult",
+            "description": "حالت چارک سوم (Q3)"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MultipleKind",
+            "description": "نوع ضریب"
+          },
+          "low": {
+            "$ref": "#/components/schemas/ImpliedCaseResult",
+            "description": "حالت چارک اول (Q1)"
+          },
+          "mean": {
+            "$ref": "#/components/schemas/ImpliedCaseResult",
+            "description": "حالت میانگین"
+          },
+          "metric": {
+            "description": "شاخص کل هدف",
+            "title": "Metric",
+            "type": "number"
+          },
+          "mid": {
+            "$ref": "#/components/schemas/ImpliedCaseResult",
+            "description": "حالت میانه"
+          },
+          "statistics": {
+            "$ref": "#/components/schemas/PeerStatisticsResult",
+            "description": "آماره‌های همتایان معتبر"
+          }
+        },
+        "required": [
+          "kind",
+          "metric",
+          "statistics",
+          "low",
+          "mid",
+          "high",
+          "mean"
+        ],
+        "title": "ImpliedValuationResult",
+        "type": "object"
+      },
+      "MultipleKind": {
+        "description": "نوع ضریب نسبی: سه ضریب حقوق صاحبان سهام و دو ضریب بنگاهی",
+        "enum": [
+          "pe",
+          "pb",
+          "ps",
+          "ev_ebitda",
+          "ev_sales"
+        ],
+        "title": "MultipleKind",
+        "type": "string"
+      },
+      "MultiplesRequest": {
+        "additionalProperties": false,
+        "description": "ورودی ارزش‌گذاری نسبی هدف با ضریب همتایان.\n\nشاخص هدف و تعداد سهام باید مثبت باشند و ضریب‌های غیرمثبت همتایان\nدر دامنه از آماره‌ها حذف می‌شوند.",
+        "properties": {
+          "cash": {
+            "default": 0.0,
+            "description": "موجودی نقد هدف (فقط ضرایب بنگاهی)",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "default": 0.0,
+            "description": "بدهی بهره‌دار هدف (فقط ضرایب بنگاهی)",
+            "title": "Debt",
+            "type": "number"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MultipleKind",
+            "description": "نوع ضریب: pe، pb، ps، ev_ebitda یا ev_sales"
+          },
+          "metric": {
+            "description": "شاخص کل هدف (سود خالص، حقوق صاحبان سهام، درآمد، EBITDA یا فروش)؛ مثبت",
+            "title": "Metric",
+            "type": "number"
+          },
+          "minority_interest": {
+            "default": 0.0,
+            "description": "منافع اقلیت هدف (فقط ضرایب بنگاهی)",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "peers": {
+            "description": "همتایان با نام یکتا؛ پس از حذف ضریب غیرمثبت حداقل MIN_PEERS معتبر لازم است",
+            "items": {
+              "$ref": "#/components/schemas/PeerMultipleInput"
+            },
+            "minItems": 3,
+            "title": "Peers",
+            "type": "array"
+          },
+          "preferred_equity": {
+            "default": 0.0,
+            "description": "سهام ممتاز هدف (فقط ضرایب بنگاهی)",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام هدف؛ مثبت",
+            "title": "Shares Outstanding",
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "metric",
+          "shares_outstanding",
+          "peers"
+        ],
+        "title": "MultiplesRequest",
+        "type": "object"
+      },
+      "PeerMultipleInput": {
+        "additionalProperties": false,
+        "description": "ضریب یک شرکت همتا؛ نام باید یکتا و ضریب عددی باشد.",
+        "properties": {
+          "name": {
+            "description": "نام یکتای همتا",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "description": "ضریب همتا (مثلاً P/E)",
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "PeerMultipleInput",
+        "type": "object"
+      },
+      "PeerStatisticsResult": {
+        "description": "آماره‌های همتایان معتبر؛ معادل `PeerStatistics` دامنه.",
+        "properties": {
+          "excluded_count": {
+            "description": "تعداد همتایان کنارگذاشته‌شده (ضریب غیرمثبت)",
+            "title": "Excluded Count",
+            "type": "integer"
+          },
+          "excluded_names": {
+            "description": "نام همتایان کنارگذاشته‌شده به ترتیب ورودی",
+            "items": {
+              "type": "string"
+            },
+            "title": "Excluded Names",
+            "type": "array"
+          },
+          "max": {
+            "description": "بیشترین ضریب معتبر",
+            "title": "Max",
+            "type": "number"
+          },
+          "mean": {
+            "description": "میانگین ضریب همتایان معتبر",
+            "title": "Mean",
+            "type": "number"
+          },
+          "median": {
+            "description": "میانه ضریب همتایان معتبر",
+            "title": "Median",
+            "type": "number"
+          },
+          "min": {
+            "description": "کمترین ضریب معتبر",
+            "title": "Min",
+            "type": "number"
+          },
+          "q1": {
+            "description": "چارک اول با درون‌یابی خطی",
+            "title": "Q1",
+            "type": "number"
+          },
+          "q3": {
+            "description": "چارک سوم با درون‌یابی خطی",
+            "title": "Q3",
+            "type": "number"
+          },
+          "used_count": {
+            "description": "تعداد همتایان معتبر استفاده‌شده",
+            "title": "Used Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "used_count",
+          "excluded_count",
+          "excluded_names",
+          "mean",
+          "median",
+          "q1",
+          "q3",
+          "min",
+          "max"
+        ],
+        "title": "PeerStatisticsResult",
+        "type": "object"
+      },
+      "PegInterpretation": {
+        "description": "پاسخ تفسیر نسبت PEG؛ معادل `PegInterpretation` دامنه.\n\nAttributes:\n    category: دسته معنایی (very_undervalued، undervalued، fair، near_fair، overvalued)\n    level: شدت پیام (success، info، warning، error)\n    message: متن پیام کاربر",
+        "properties": {
+          "category": {
+            "description": "دسته معنایی تفسیر",
+            "title": "Category",
+            "type": "string"
+          },
+          "level": {
+            "description": "شدت پیام برای انتخاب نوع نمایش",
+            "title": "Level",
+            "type": "string"
+          },
+          "message": {
+            "description": "متن پیام کاربر",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "level",
+          "message"
+        ],
+        "title": "PegInterpretation",
+        "type": "object"
+      },
+      "PegRequest": {
+        "additionalProperties": false,
+        "description": "ورودی نسبت PEG؛ `PEG = (P/E) / نرخ رشد سالانه`.",
+        "properties": {
+          "growth_rate_percent": {
+            "description": "نرخ رشد سالانه سود (درصد)؛ دامنه آن را بالای ۱۰۰ غیرمنطقی می‌داند",
+            "exclusiveMinimum": 0.0,
+            "maximum": 100.0,
+            "title": "Growth Rate Percent",
+            "type": "number"
+          },
+          "pe_ratio": {
+            "description": "نسبت P/E",
+            "exclusiveMinimum": 0.0,
+            "title": "Pe Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "pe_ratio",
+          "growth_rate_percent"
+        ],
+        "title": "PegRequest",
+        "type": "object"
+      },
+      "PegResult": {
+        "description": "پاسخ نسبت PEG همراه تفسیر آن.\n\nAttributes:\n    peg: نسبت PEG محاسبه‌شده\n    pe_ratio: نسبت P/E ورودی\n    growth_rate_percent: نرخ رشد سالانه سود ورودی (درصد)\n    interpretation: تفسیر نسبت بر اساس آستانه‌های استاندارد",
+        "properties": {
+          "growth_rate_percent": {
+            "description": "نرخ رشد سالانه سود ورودی (درصد)",
+            "title": "Growth Rate Percent",
+            "type": "number"
+          },
+          "interpretation": {
+            "$ref": "#/components/schemas/PegInterpretation",
+            "description": "تفسیر نسبت PEG"
+          },
+          "pe_ratio": {
+            "description": "نسبت P/E ورودی",
+            "title": "Pe Ratio",
+            "type": "number"
+          },
+          "peg": {
+            "description": "نسبت PEG",
+            "title": "Peg",
+            "type": "number"
+          }
+        },
+        "required": [
+          "peg",
+          "pe_ratio",
+          "growth_rate_percent",
+          "interpretation"
+        ],
+        "title": "PegResult",
+        "type": "object"
+      },
+      "PortfolioAnalysisResult": {
+        "description": "پاسخ تحلیل سبد؛ معادل `PortfolioAnalysis` دامنه.",
+        "properties": {
+          "assets": {
+            "description": "دارایی‌ها برای نمودار پراکندگی",
+            "items": {
+              "$ref": "#/components/schemas/AssetPointResult"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "capital_allocation_line": {
+            "$ref": "#/components/schemas/CapitalAllocationLineResult",
+            "description": "خط تخصیص سرمایه"
+          },
+          "complete_portfolio": {
+            "$ref": "#/components/schemas/CompletePortfolioResult",
+            "description": "سبد کامل"
+          },
+          "equal_weight": {
+            "$ref": "#/components/schemas/PortfolioPointResult",
+            "description": "سبد معیار با وزن برابر"
+          },
+          "frontier": {
+            "description": "مرز کارا",
+            "items": {
+              "$ref": "#/components/schemas/PortfolioPointResult"
+            },
+            "title": "Frontier",
+            "type": "array"
+          },
+          "min_variance": {
+            "$ref": "#/components/schemas/PortfolioPointResult",
+            "description": "سبد حداقل واریانس"
+          },
+          "tangency": {
+            "$ref": "#/components/schemas/PortfolioPointResult",
+            "description": "سبد مماس"
+          }
+        },
+        "required": [
+          "assets",
+          "min_variance",
+          "tangency",
+          "frontier",
+          "equal_weight",
+          "capital_allocation_line",
+          "complete_portfolio"
+        ],
+        "title": "PortfolioAnalysisResult",
+        "type": "object"
+      },
+      "PortfolioOptimizeRequest": {
+        "additionalProperties": false,
+        "description": "ورودی تحلیل سبد از بازده و کوواریانس سالانه.",
+        "properties": {
+          "allow_short": {
+            "default": false,
+            "description": "آیا فروش استقراضی مجاز است؟",
+            "title": "Allow Short",
+            "type": "boolean"
+          },
+          "asset_names": {
+            "description": "نام یکتای دارایی‌ها به ترتیب بردار بازده",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 30,
+            "minItems": 2,
+            "title": "Asset Names",
+            "type": "array"
+          },
+          "covariance": {
+            "description": "کوواریانس سالانه؛ مربعی، متقارن و با قطر نامنفی",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Covariance",
+            "type": "array"
+          },
+          "frontier_points": {
+            "default": 50,
+            "description": "تعداد نقاط مرز کارا",
+            "maximum": 200.0,
+            "minimum": 5.0,
+            "title": "Frontier Points",
+            "type": "integer"
+          },
+          "max_leverage": {
+            "default": 1.0,
+            "description": "سقف وزن سبد مماس در سبد کامل؛ ۰ تا ۳",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Max Leverage",
+            "type": "number"
+          },
+          "mean_returns": {
+            "description": "بازده مورد انتظار سالانه (اعشاری)",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 30,
+            "minItems": 2,
+            "title": "Mean Returns",
+            "type": "array"
+          },
+          "risk_aversion": {
+            "description": "ریسک‌گریزی A؛ متناهی و مثبت",
+            "exclusiveMinimum": 0.0,
+            "title": "Risk Aversion",
+            "type": "number"
+          },
+          "risk_free_rate": {
+            "description": "نرخ بدون ریسک سالانه (اعشاری، نامنفی)",
+            "minimum": 0.0,
+            "title": "Risk Free Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "asset_names",
+          "mean_returns",
+          "covariance",
+          "risk_free_rate",
+          "risk_aversion"
+        ],
+        "title": "PortfolioOptimizeRequest",
+        "type": "object"
+      },
+      "PortfolioPointResult": {
+        "description": "یک سبد؛ معادل `PortfolioPoint` دامنه. شارپ بدون نرخ بدون ریسک null است.",
+        "properties": {
+          "expected_return": {
+            "description": "بازده مورد انتظار (اعشاری)",
+            "title": "Expected Return",
+            "type": "number"
+          },
+          "expected_return_percent": {
+            "description": "بازده مورد انتظار به درصد",
+            "title": "Expected Return Percent",
+            "type": "number"
+          },
+          "sharpe_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نسبت شارپ؛ اگر تعریف نشده باشد null",
+            "title": "Sharpe Ratio"
+          },
+          "variance": {
+            "description": "واریانس سالانه",
+            "title": "Variance",
+            "type": "number"
+          },
+          "volatility": {
+            "description": "نوسان سالانه (اعشاری)",
+            "title": "Volatility",
+            "type": "number"
+          },
+          "volatility_percent": {
+            "description": "نوسان سالانه به درصد",
+            "title": "Volatility Percent",
+            "type": "number"
+          },
+          "weights": {
+            "description": "وزن دارایی‌ها",
+            "items": {
+              "type": "number"
+            },
+            "title": "Weights",
+            "type": "array"
+          },
+          "weights_percent": {
+            "description": "وزن‌ها به درصد",
+            "items": {
+              "type": "number"
+            },
+            "title": "Weights Percent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "weights",
+          "weights_percent",
+          "expected_return",
+          "expected_return_percent",
+          "variance",
+          "volatility",
+          "volatility_percent",
+          "sharpe_ratio"
+        ],
+        "title": "PortfolioPointResult",
+        "type": "object"
+      },
+      "PortfolioStatisticsRequest": {
+        "additionalProperties": false,
+        "description": "ورودی آماره سالانه از قیمت‌های هم‌تراز.",
+        "properties": {
+          "assets": {
+            "description": "دارایی‌ها به ترتیب ستون‌های کوواریانس",
+            "items": {
+              "$ref": "#/components/schemas/PriceSeriesInput"
+            },
+            "maxItems": 30,
+            "minItems": 2,
+            "title": "Assets",
+            "type": "array"
+          },
+          "periods_per_year": {
+            "description": "تعداد دوره‌های بازده در سال؛ عدد صحیح ۱ تا ۳۶۶",
+            "maximum": 366.0,
+            "minimum": 1.0,
+            "title": "Periods Per Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assets",
+          "periods_per_year"
+        ],
+        "title": "PortfolioStatisticsRequest",
+        "type": "object"
+      },
+      "PortfolioStatisticsResult": {
+        "description": "پاسخ آماره نمونه‌ای سالانه؛ معادل `SampleStatistics` دامنه.",
+        "properties": {
+          "correlation": {
+            "description": "همبستگی نمونه‌ای",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Correlation",
+            "type": "array"
+          },
+          "covariance": {
+            "description": "کوواریانس نمونه‌ای سالانه",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Covariance",
+            "type": "array"
+          },
+          "mean_returns": {
+            "description": "میانگین حسابی سالانه (اعشاری)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Mean Returns",
+            "type": "array"
+          },
+          "mean_returns_percent": {
+            "description": "میانگین سالانه به درصد",
+            "items": {
+              "type": "number"
+            },
+            "title": "Mean Returns Percent",
+            "type": "array"
+          },
+          "observations": {
+            "description": "تعداد بازده هر دارایی، نه تعداد قیمت",
+            "title": "Observations",
+            "type": "integer"
+          },
+          "volatilities": {
+            "description": "نوسان سالانه (اعشاری)",
+            "items": {
+              "type": "number"
+            },
+            "title": "Volatilities",
+            "type": "array"
+          },
+          "volatilities_percent": {
+            "description": "نوسان سالانه به درصد",
+            "items": {
+              "type": "number"
+            },
+            "title": "Volatilities Percent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mean_returns",
+          "mean_returns_percent",
+          "covariance",
+          "volatilities",
+          "volatilities_percent",
+          "correlation",
+          "observations"
+        ],
+        "title": "PortfolioStatisticsResult",
+        "type": "object"
+      },
+      "PreferredStockRequest": {
+        "additionalProperties": false,
+        "description": "ورودی ارزش‌گذاری سهام ممتاز؛ `P = D / r`.",
+        "properties": {
+          "d": {
+            "description": "سود تقسیمی ثابت سالانه",
+            "exclusiveMinimum": 0.0,
+            "title": "D",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          }
+        },
+        "required": [
+          "d",
+          "r"
+        ],
+        "title": "PreferredStockRequest",
+        "type": "object"
+      },
+      "PreferredStockResult": {
+        "description": "پاسخ ارزش‌گذاری سهام ممتاز؛ منطق یکسان با مدل رشد صفر.\n\nAttributes:\n    price: قیمت سهام ممتاز\n    dividend: سود تقسیمی ثابت سالانه، نمایش مجدد\n    required_return: نرخ بازده ورودی (اعشاری)\n    required_return_percent: نرخ بازده ورودی (درصد)\n    dividend_yield_percent: بازده سود تقسیمی به درصد",
+        "properties": {
+          "dividend": {
+            "description": "سود تقسیمی ثابت سالانه",
+            "title": "Dividend",
+            "type": "number"
+          },
+          "dividend_yield_percent": {
+            "description": "بازده سود تقسیمی (درصد)",
+            "title": "Dividend Yield Percent",
+            "type": "number"
+          },
+          "price": {
+            "description": "قیمت سهام ممتاز",
+            "title": "Price",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "title": "Required Return",
+            "type": "number"
+          },
+          "required_return_percent": {
+            "description": "نرخ بازده مورد انتظار (درصد)",
+            "title": "Required Return Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "price",
+          "dividend",
+          "required_return",
+          "required_return_percent",
+          "dividend_yield_percent"
+        ],
+        "title": "PreferredStockResult",
+        "type": "object"
+      },
+      "PriceSeriesInput": {
+        "additionalProperties": false,
+        "description": "سری قیمت یک دارایی؛ هم‌ترازی زمانی با بقیه دارایی‌ها بر عهده فرانت‌اند است.",
+        "properties": {
+          "name": {
+            "description": "نام یکتای دارایی",
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "prices": {
+            "description": "قیمت‌های مثبت و متناهی، هم‌طول با سایر دارایی‌ها",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "title": "Prices",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "prices"
+        ],
+        "title": "PriceSeriesInput",
+        "type": "object"
+      },
+      "RetentionCurvePointResult": {
+        "description": "نقطهٔ منحنی نگهداری سود؛ معادل `RetentionCurvePoint` دامنه.",
+        "properties": {
+          "npvgo": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ارزش فرصت‌های رشد؛ null برای نقطهٔ نامعتبر",
+            "title": "Npvgo"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "قیمت؛ null برای اختلاف نامعتبر رشد و بازده",
+            "title": "Price"
+          },
+          "retention_ratio": {
+            "description": "نسبت نگهداری سود (اعشاری)",
+            "title": "Retention Ratio",
+            "type": "number"
+          },
+          "retention_ratio_percent": {
+            "description": "نسبت نگهداری سود (درصد)",
+            "title": "Retention Ratio Percent",
+            "type": "number"
+          },
+          "sustainable_growth": {
+            "description": "نرخ رشد پایدار (اعشاری)",
+            "title": "Sustainable Growth",
+            "type": "number"
+          },
+          "sustainable_growth_percent": {
+            "description": "نرخ رشد پایدار (درصد)",
+            "title": "Sustainable Growth Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "retention_ratio",
+          "retention_ratio_percent",
+          "sustainable_growth",
+          "sustainable_growth_percent",
+          "price",
+          "npvgo"
+        ],
+        "title": "RetentionCurvePointResult",
+        "type": "object"
+      },
+      "ReverseDcfRequest": {
+        "additionalProperties": false,
+        "description": "ورودی DCF معکوس؛ قیمت بازار برای یافتن رشد پایانی تلویحی.\n\n`terminal_growth` اختیاری، نرخ رشد پایانی خود تحلیل‌گر است و فقط برای\nمحاسبه `growth_gap` استفاده می‌شود (به `reference_terminal_growth` دامنه نگاشت می‌شود).",
+        "properties": {
+          "cash": {
+            "default": 0.0,
+            "description": "موجودی نقد و معادل",
+            "title": "Cash",
+            "type": "number"
+          },
+          "debt": {
+            "default": 0.0,
+            "description": "بدهی بهره‌دار",
+            "title": "Debt",
+            "type": "number"
+          },
+          "market_price": {
+            "description": "قیمت بازار سهام",
+            "title": "Market Price",
+            "type": "number"
+          },
+          "minority_interest": {
+            "default": 0.0,
+            "description": "منافع اقلیت",
+            "title": "Minority Interest",
+            "type": "number"
+          },
+          "preferred_equity": {
+            "default": 0.0,
+            "description": "سهام ممتاز",
+            "title": "Preferred Equity",
+            "type": "number"
+          },
+          "projections": {
+            "description": "پیش‌بینی سالانه اجزای FCFF؛ سال = اندیس از ۱",
+            "items": {
+              "$ref": "#/components/schemas/CashFlowProjectionInput"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Projections",
+            "type": "array"
+          },
+          "shares_outstanding": {
+            "description": "تعداد سهام",
+            "title": "Shares Outstanding",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات سراسری (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          },
+          "terminal_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ رشد پایانی تحلیل‌گر برای مقایسه (اعشاری)؛ اختیاری",
+            "title": "Terminal Growth"
+          },
+          "wacc": {
+            "description": "نرخ WACC / تنزیل (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          }
+        },
+        "required": [
+          "projections",
+          "wacc",
+          "shares_outstanding",
+          "tax_rate",
+          "market_price"
+        ],
+        "title": "ReverseDcfRequest",
+        "type": "object"
+      },
+      "ReverseDcfResult": {
+        "description": "پاسخ DCF معکوس؛ معادل `ReverseDcfResult` دامنه.\n\nAttributes:\n    status: وضعیت حل (`solved` | `market_price_below_range` | `market_price_above_range`)\n    market_price: قیمت بازار ورودی\n    implied_growth: رشد پایانی تلویحی (اعشاری)؛ فقط در وضعیت solved\n    implied_growth_percent: رشد پایانی تلویحی (درصد)؛ در غیر solved برابر null\n    wacc: نرخ WACC (اعشاری)\n    wacc_percent: نرخ WACC (درصد)\n    search_min_growth: کرانه پایین بازه جستجو (اعشاری)\n    search_max_growth: کرانه بالای بازه جستجو (اعشاری)\n    value_per_share_at_min_growth: ارزش هر سهم در کرانه پایین\n    value_per_share_at_max_growth: ارزش هر سهم در کرانه بالا\n    enterprise_value: ارزش بنگاه در رشد تلویحی؛ در غیر solved برابر null\n    equity_value: ارزش حقوق صاحبان سهام در رشد تلویحی؛ در غیر solved برابر null\n    terminal_value_share_percent: سهم ارزش فعلی انتهای دوره از EV (درصد)\n    reference_terminal_growth: نرخ رشد پایانی تحلیل‌گر (اعشاری)\n    growth_gap: اختلاف رشد تلویحی و رشد مرجع (اعشاری)\n    growth_gap_percent: اختلاف رشد تلویحی و رشد مرجع (درصد)\n    message: پیام فارسی برای نمایش به کاربر",
+        "properties": {
+          "enterprise_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ارزش بنگاه در رشد تلویحی؛ در غیر solved برابر null",
+            "title": "Enterprise Value"
+          },
+          "equity_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ارزش حقوق صاحبان سهام در رشد تلویحی؛ در غیر solved برابر null",
+            "title": "Equity Value"
+          },
+          "growth_gap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "اختلاف رشد تلویحی و رشد مرجع (اعشاری)",
+            "title": "Growth Gap"
+          },
+          "growth_gap_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "اختلاف رشد تلویحی و رشد مرجع (درصد)",
+            "title": "Growth Gap Percent"
+          },
+          "implied_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "رشد پایانی تلویحی (اعشاری)؛ فقط در وضعیت solved",
+            "title": "Implied Growth"
+          },
+          "implied_growth_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "رشد پایانی تلویحی (درصد)؛ در غیر solved برابر null",
+            "title": "Implied Growth Percent"
+          },
+          "market_price": {
+            "description": "قیمت بازار سهام (ورودی)",
+            "title": "Market Price",
+            "type": "number"
+          },
+          "message": {
+            "description": "پیام فارسی برای نمایش به کاربر",
+            "title": "Message",
+            "type": "string"
+          },
+          "reference_terminal_growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "نرخ رشد پایانی تحلیل‌گر (اعشاری)",
+            "title": "Reference Terminal Growth"
+          },
+          "search_max_growth": {
+            "description": "کرانه بالای بازه جستجوی رشد (اعشاری)",
+            "title": "Search Max Growth",
+            "type": "number"
+          },
+          "search_min_growth": {
+            "description": "کرانه پایین بازه جستجوی رشد (اعشاری)",
+            "title": "Search Min Growth",
+            "type": "number"
+          },
+          "status": {
+            "description": "وضعیت حل: solved یا خارج از بازه قیمت",
+            "title": "Status",
+            "type": "string"
+          },
+          "terminal_value_share_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "سهم ارزش فعلی انتهای دوره از EV (درصد)",
+            "title": "Terminal Value Share Percent"
+          },
+          "value_per_share_at_max_growth": {
+            "description": "ارزش هر سهم در کرانه بالای بازه جستجو",
+            "title": "Value Per Share At Max Growth",
+            "type": "number"
+          },
+          "value_per_share_at_min_growth": {
+            "description": "ارزش هر سهم در کرانه پایین بازه جستجو",
+            "title": "Value Per Share At Min Growth",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          },
+          "wacc_percent": {
+            "description": "نرخ WACC (درصد)",
+            "title": "Wacc Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "market_price",
+          "wacc",
+          "wacc_percent",
+          "search_min_growth",
+          "search_max_growth",
+          "value_per_share_at_min_growth",
+          "value_per_share_at_max_growth",
+          "message"
+        ],
+        "title": "ReverseDcfResult",
+        "type": "object"
+      },
+      "RiskPremiumRequest": {
+        "additionalProperties": false,
+        "description": "ورودی حق‌الریسک سهام نسبت به اوراق قرضه.",
+        "properties": {
+          "bond_rate_percent": {
+            "description": "نرخ اوراق قرضه مشابه (درصد)",
+            "exclusiveMinimum": 0.0,
+            "title": "Bond Rate Percent",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار سهام (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "Required Return",
+            "type": "number"
+          }
+        },
+        "required": [
+          "required_return",
+          "bond_rate_percent"
+        ],
+        "title": "RiskPremiumRequest",
+        "type": "object"
+      },
+      "RiskPremiumResult": {
+        "description": "پاسخ حق‌الریسک سهام در مقایسه با اوراق قرضه.\n\nAttributes:\n    risk_premium_percent: حق‌الریسک بر حسب واحد درصد\n    required_return: نرخ بازده ورودی (اعشاری)\n    required_return_percent: نرخ بازده ورودی (درصد)\n    bond_rate_percent: نرخ اوراق قرضه ورودی (درصد)",
+        "properties": {
+          "bond_rate_percent": {
+            "description": "نرخ اوراق قرضه مشابه (درصد)",
+            "title": "Bond Rate Percent",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار سهام (اعشاری)",
+            "title": "Required Return",
+            "type": "number"
+          },
+          "required_return_percent": {
+            "description": "نرخ بازده مورد انتظار سهام (درصد)",
+            "title": "Required Return Percent",
+            "type": "number"
+          },
+          "risk_premium_percent": {
+            "description": "حق‌الریسک (واحد درصد)",
+            "title": "Risk Premium Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "risk_premium_percent",
+          "required_return",
+          "required_return_percent",
+          "bond_rate_percent"
+        ],
+        "title": "RiskPremiumResult",
+        "type": "object"
+      },
+      "ScenarioRowResult": {
+        "description": "سطر نتیجهٔ سناریو؛ آینهٔ `ScenarioRow` دامنه.",
+        "properties": {
+          "enterprise_value": {
+            "description": "ارزش بنگاه",
+            "title": "Enterprise Value",
+            "type": "number"
+          },
+          "equity_value": {
+            "description": "ارزش حقوق صاحبان سهام",
+            "title": "Equity Value",
+            "type": "number"
+          },
+          "name": {
+            "description": "نام سناریو",
+            "title": "Name",
+            "type": "string"
+          },
+          "probability": {
+            "description": "احتمال سناریو (اعشاری)",
+            "title": "Probability",
+            "type": "number"
+          },
+          "probability_percent": {
+            "description": "احتمال سناریو (درصد)",
+            "title": "Probability Percent",
+            "type": "number"
+          },
+          "terminal_growth": {
+            "description": "نرخ رشد پایانی (اعشاری)",
+            "title": "Terminal Growth",
+            "type": "number"
+          },
+          "terminal_growth_percent": {
+            "description": "نرخ رشد پایانی (درصد)",
+            "title": "Terminal Growth Percent",
+            "type": "number"
+          },
+          "terminal_value_share_percent": {
+            "description": "سهم ارزش پایانی از EV (درصد)",
+            "title": "Terminal Value Share Percent",
+            "type": "number"
+          },
+          "upside": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده بالقوه (اعشاری)؛ بدون قیمت بازار null",
+            "title": "Upside"
+          },
+          "upside_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "بازده بالقوه (درصد)؛ بدون قیمت بازار null",
+            "title": "Upside Percent"
+          },
+          "value_per_share": {
+            "description": "ارزش هر سهم",
+            "title": "Value Per Share",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          },
+          "wacc_percent": {
+            "description": "نرخ WACC (درصد)",
+            "title": "Wacc Percent",
+            "type": "number"
+          },
+          "weighted_value_per_share": {
+            "description": "سهم وزنی ارزش هر سهم",
+            "title": "Weighted Value Per Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "probability",
+          "probability_percent",
+          "wacc",
+          "wacc_percent",
+          "terminal_growth",
+          "terminal_growth_percent",
+          "enterprise_value",
+          "equity_value",
+          "value_per_share",
+          "terminal_value_share_percent",
+          "weighted_value_per_share",
+          "upside",
+          "upside_percent"
+        ],
+        "title": "ScenarioRowResult",
+        "type": "object"
+      },
+      "SinglePeriodRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل تک‌دوره‌ای؛ `P₀ = (D₁ + P₁) / (1 + r)`.",
+        "properties": {
+          "d1": {
+            "description": "سود تقسیمی مورد انتظار پایان سال",
+            "exclusiveMinimum": 0.0,
+            "title": "D1",
+            "type": "number"
+          },
+          "p1": {
+            "description": "قیمت مورد انتظار پایان سال",
+            "exclusiveMinimum": 0.0,
+            "title": "P1",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          }
+        },
+        "required": [
+          "d1",
+          "p1",
+          "r"
+        ],
+        "title": "SinglePeriodRequest",
+        "type": "object"
+      },
+      "SinglePeriodResult": {
+        "description": "پاسخ مدل تک‌دوره‌ای؛ معادل `SinglePeriodDecomposition`.\n\nAttributes:\n    p0: قیمت فعلی سهام\n    pv_dividend: ارزش فعلی سود تقسیمی پایان سال\n    pv_terminal_price: ارزش فعلی قیمت پایان سال",
+        "properties": {
+          "p0": {
+            "description": "قیمت فعلی سهام (P₀)",
+            "title": "P0",
+            "type": "number"
+          },
+          "pv_dividend": {
+            "description": "ارزش فعلی سود تقسیمی پایان سال",
+            "title": "Pv Dividend",
+            "type": "number"
+          },
+          "pv_terminal_price": {
+            "description": "ارزش فعلی قیمت پایان سال",
+            "title": "Pv Terminal Price",
+            "type": "number"
+          }
+        },
+        "required": [
+          "p0",
+          "pv_dividend",
+          "pv_terminal_price"
+        ],
+        "title": "SinglePeriodResult",
+        "type": "object"
+      },
+      "SupernormalRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل رشد غیرعادی چندمرحله‌ای.",
+        "properties": {
+          "d0": {
+            "description": "سود تقسیمی فعلی",
+            "exclusiveMinimum": 0.0,
+            "title": "D0",
+            "type": "number"
+          },
+          "g_constant": {
+            "description": "نرخ رشد ثابت پس از دوره غیرعادی (اعشاری)",
+            "title": "G Constant",
+            "type": "number"
+          },
+          "growth_rates": {
+            "description": "نرخ‌های رشد هر سال دوره غیرعادی (اعشاری)؛ طول باید با years برابر باشد",
+            "items": {
+              "type": "number"
+            },
+            "title": "Growth Rates",
+            "type": "array"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          },
+          "years": {
+            "description": "تعداد سال‌های دوره غیرعادی",
+            "minimum": 1.0,
+            "title": "Years",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "d0",
+          "growth_rates",
+          "years",
+          "g_constant",
+          "r"
+        ],
+        "title": "SupernormalRequest",
+        "type": "object"
+      },
+      "SupernormalResult": {
+        "description": "پاسخ مدل رشد غیرعادی؛ معادل `SupernormalResult` دامنه.\n\nAttributes:\n    p0: قیمت فعلی سهام\n    dividends: سودهای تقسیمی دوره غیرعادی (D₁ تا Dₙ)\n    d_terminal: سود تقسیمی سال نخست پس از دوره غیرعادی (Dₙ₊₁)\n    p_terminal: قیمت انتهای دوره غیرعادی (Pₙ)\n    pv_dividends: ارزش فعلی سودهای تقسیمی دوره غیرعادی\n    pv_dividends_total: مجموع ارزش فعلی سودهای تقسیمی دوره غیرعادی\n    pv_p_terminal: ارزش فعلی قیمت انتهای دوره\n    schedule: زمان‌بندی سطرهای دوره غیرعادی به‌همراه سطر انتهای دوره؛\n        در نمونه دامنه نیست و لایه endpoint آن را از `supernormal_schedule` می‌سازد",
+        "properties": {
+          "d_terminal": {
+            "description": "سود تقسیمی سال نخست پس از دوره غیرعادی",
+            "title": "D Terminal",
+            "type": "number"
+          },
+          "dividends": {
+            "description": "سودهای تقسیمی دوره غیرعادی",
+            "items": {
+              "type": "number"
+            },
+            "title": "Dividends",
+            "type": "array"
+          },
+          "p0": {
+            "description": "قیمت فعلی سهام (P₀)",
+            "title": "P0",
+            "type": "number"
+          },
+          "p_terminal": {
+            "description": "قیمت انتهای دوره غیرعادی (Pₙ)",
+            "title": "P Terminal",
+            "type": "number"
+          },
+          "pv_dividends": {
+            "description": "ارزش فعلی سودهای تقسیمی دوره غیرعادی",
+            "items": {
+              "type": "number"
+            },
+            "title": "Pv Dividends",
+            "type": "array"
+          },
+          "pv_dividends_total": {
+            "description": "مجموع ارزش فعلی سودهای دوره غیرعادی",
+            "title": "Pv Dividends Total",
+            "type": "number"
+          },
+          "pv_p_terminal": {
+            "description": "ارزش فعلی قیمت انتهای دوره",
+            "title": "Pv P Terminal",
+            "type": "number"
+          },
+          "schedule": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SupernormalScheduleRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "زمان‌بندی سودهای تقسیمی",
+            "title": "Schedule"
+          }
+        },
+        "required": [
+          "p0",
+          "dividends",
+          "d_terminal",
+          "p_terminal",
+          "pv_dividends",
+          "pv_dividends_total",
+          "pv_p_terminal"
+        ],
+        "title": "SupernormalResult",
+        "type": "object"
+      },
+      "SupernormalScheduleRow": {
+        "description": "یک سطر زمان‌بندی سود تقسیمی رشد غیرعادی؛ معادل دامنه.\n\nAttributes:\n    period: شماره سال دوره غیرعادی؛ برای سطر انتهای دوره صفر\n    growth_rate: نرخ رشد سال (اعشاری)\n    growth_rate_percent: نرخ رشد سال (درصد)\n    dividend: سود تقسیمی سال\n    present_value: ارزش فعلی سود تقسیمی سال\n    is_terminal: آیا سطر مربوط به ارزش انتهای دوره است",
+        "properties": {
+          "dividend": {
+            "description": "سود تقسیمی سال",
+            "title": "Dividend",
+            "type": "number"
+          },
+          "growth_rate": {
+            "description": "نرخ رشد سال (اعشاری)",
+            "title": "Growth Rate",
+            "type": "number"
+          },
+          "growth_rate_percent": {
+            "description": "نرخ رشد سال (درصد)",
+            "title": "Growth Rate Percent",
+            "type": "number"
+          },
+          "is_terminal": {
+            "description": "آیا سطر مربوط به ارزش انتهای دوره است",
+            "title": "Is Terminal",
+            "type": "boolean"
+          },
+          "period": {
+            "description": "شماره سال دوره غیرعادی؛ صفر برای سطر انتهای دوره",
+            "title": "Period",
+            "type": "integer"
+          },
+          "present_value": {
+            "description": "ارزش فعلی سود تقسیمی سال",
+            "title": "Present Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "period",
+          "growth_rate",
+          "growth_rate_percent",
+          "dividend",
+          "present_value",
+          "is_terminal"
+        ],
+        "title": "SupernormalScheduleRow",
+        "type": "object"
+      },
+      "SustainableGrowthRequest": {
+        "additionalProperties": false,
+        "description": "ورودی رشد پایدار؛ NPVGO از ROE و نسبت نگهداری سود استخراج می‌شود.",
+        "properties": {
+          "eps": {
+            "description": "سود هر سهم سال آینده",
+            "exclusiveMinimum": 0.0,
+            "title": "Eps",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          },
+          "retention_ratio": {
+            "description": "نسبت نگهداری سود (اعشاری)",
+            "exclusiveMaximum": 1.0,
+            "minimum": 0.0,
+            "title": "Retention Ratio",
+            "type": "number"
+          },
+          "roe": {
+            "description": "بازده حقوق صاحبان سهام (اعشاری)؛ حداکثر ۲ در دامنه",
+            "exclusiveMinimum": 0.0,
+            "title": "Roe",
+            "type": "number"
+          }
+        },
+        "required": [
+          "eps",
+          "r",
+          "roe",
+          "retention_ratio"
+        ],
+        "title": "SustainableGrowthRequest",
+        "type": "object"
+      },
+      "SustainableGrowthResult": {
+        "description": "پاسخ رشد پایدار؛ آینهٔ `SustainableGrowthBreakdown` دامنه.",
+        "properties": {
+          "eps": {
+            "description": "سود هر سهم سال آینده",
+            "title": "Eps",
+            "type": "number"
+          },
+          "growth_creates_value": {
+            "description": "آیا ROE از بازده مورد انتظار بیشتر است",
+            "title": "Growth Creates Value",
+            "type": "boolean"
+          },
+          "growth_share_percent": {
+            "description": "سهم فرصت‌های رشد از ارزش (درصد)",
+            "title": "Growth Share Percent",
+            "type": "number"
+          },
+          "justified_pe": {
+            "description": "نسبت قیمت به سود توجیه‌شده",
+            "title": "Justified Pe",
+            "type": "number"
+          },
+          "next_dividend": {
+            "description": "سود تقسیمی سال آینده (D₁)",
+            "title": "Next Dividend",
+            "type": "number"
+          },
+          "no_growth_value": {
+            "description": "ارزش سهام بدون رشد",
+            "title": "No Growth Value",
+            "type": "number"
+          },
+          "npvgo": {
+            "description": "ارزش فعلی خالص فرصت‌های رشد",
+            "title": "Npvgo",
+            "type": "number"
+          },
+          "payout_ratio": {
+            "description": "نسبت تقسیم سود (اعشاری)",
+            "title": "Payout Ratio",
+            "type": "number"
+          },
+          "payout_ratio_percent": {
+            "description": "نسبت تقسیم سود (درصد)",
+            "title": "Payout Ratio Percent",
+            "type": "number"
+          },
+          "price": {
+            "description": "قیمت سهام",
+            "title": "Price",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "title": "Required Return",
+            "type": "number"
+          },
+          "required_return_percent": {
+            "description": "نرخ بازده مورد انتظار (درصد)",
+            "title": "Required Return Percent",
+            "type": "number"
+          },
+          "retention_curve": {
+            "description": "منحنی نگهداری سود؛ ده نقطه",
+            "items": {
+              "$ref": "#/components/schemas/RetentionCurvePointResult"
+            },
+            "title": "Retention Curve",
+            "type": "array"
+          },
+          "retention_ratio": {
+            "description": "نسبت نگهداری سود (اعشاری)",
+            "title": "Retention Ratio",
+            "type": "number"
+          },
+          "retention_ratio_percent": {
+            "description": "نسبت نگهداری سود (درصد)",
+            "title": "Retention Ratio Percent",
+            "type": "number"
+          },
+          "roe": {
+            "description": "بازده حقوق صاحبان سهام (اعشاری)",
+            "title": "Roe",
+            "type": "number"
+          },
+          "roe_percent": {
+            "description": "بازده حقوق صاحبان سهام (درصد)",
+            "title": "Roe Percent",
+            "type": "number"
+          },
+          "sustainable_growth": {
+            "description": "نرخ رشد پایدار (اعشاری)",
+            "title": "Sustainable Growth",
+            "type": "number"
+          },
+          "sustainable_growth_percent": {
+            "description": "نرخ رشد پایدار (درصد)",
+            "title": "Sustainable Growth Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "eps",
+          "required_return",
+          "required_return_percent",
+          "roe",
+          "roe_percent",
+          "retention_ratio",
+          "retention_ratio_percent",
+          "payout_ratio",
+          "payout_ratio_percent",
+          "sustainable_growth",
+          "sustainable_growth_percent",
+          "next_dividend",
+          "price",
+          "no_growth_value",
+          "npvgo",
+          "growth_share_percent",
+          "justified_pe",
+          "growth_creates_value",
+          "retention_curve"
+        ],
+        "title": "SustainableGrowthResult",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "ValuationRangeInput": {
+        "additionalProperties": false,
+        "description": "بازه ارزش یک روش ارزیابی؛ ترتیب و کرانه‌ها در دامنه بررسی می‌شوند.",
+        "properties": {
+          "high": {
+            "description": "کرانه بالا؛ باید low ≤ mid ≤ high باشد",
+            "title": "High",
+            "type": "number"
+          },
+          "low": {
+            "description": "کرانه پایین بازه؛ می‌تواند منفی باشد",
+            "title": "Low",
+            "type": "number"
+          },
+          "method": {
+            "description": "نام یکتای روش ارزیابی",
+            "minLength": 1,
+            "title": "Method",
+            "type": "string"
+          },
+          "mid": {
+            "description": "مقدار میانی (ارزش پایه یا میانه)",
+            "title": "Mid",
+            "type": "number"
+          }
+        },
+        "required": [
+          "method",
+          "low",
+          "mid",
+          "high"
+        ],
+        "title": "ValuationRangeInput",
+        "type": "object"
+      },
+      "WaccRequest": {
+        "additionalProperties": false,
+        "description": "ورودی میانگین موزون هزینه سرمایه؛ کرانه‌های عددی در دامنه اعمال می‌شوند.",
+        "properties": {
+          "cost_of_debt": {
+            "description": "هزینه بدهی قبل از مالیات (اعشاری)",
+            "title": "Cost Of Debt",
+            "type": "number"
+          },
+          "cost_of_equity": {
+            "description": "هزینه حقوق صاحبان سهام (اعشاری)",
+            "title": "Cost Of Equity",
+            "type": "number"
+          },
+          "debt": {
+            "description": "ارزش بازار بدهی؛ صفر برای بنگاه تمام‌سهامی مجاز است",
+            "title": "Debt",
+            "type": "number"
+          },
+          "equity": {
+            "description": "ارزش بازار حقوق صاحبان سهام",
+            "title": "Equity",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "equity",
+          "debt",
+          "cost_of_equity",
+          "cost_of_debt",
+          "tax_rate"
+        ],
+        "title": "WaccRequest",
+        "type": "object"
+      },
+      "WaccResult": {
+        "description": "پاسخ WACC؛ معادل `WaccBreakdown` دامنه.",
+        "properties": {
+          "after_tax_cost_of_debt": {
+            "description": "هزینه بدهی بعد از مالیات (اعشاری)",
+            "title": "After Tax Cost Of Debt",
+            "type": "number"
+          },
+          "after_tax_cost_of_debt_percent": {
+            "description": "هزینه بدهی بعد از مالیات (درصد)",
+            "title": "After Tax Cost Of Debt Percent",
+            "type": "number"
+          },
+          "cost_of_debt": {
+            "description": "هزینه بدهی قبل از مالیات (اعشاری)",
+            "title": "Cost Of Debt",
+            "type": "number"
+          },
+          "cost_of_debt_percent": {
+            "description": "هزینه بدهی قبل از مالیات (درصد)",
+            "title": "Cost Of Debt Percent",
+            "type": "number"
+          },
+          "cost_of_equity": {
+            "description": "هزینه حقوق صاحبان سهام (اعشاری)",
+            "title": "Cost Of Equity",
+            "type": "number"
+          },
+          "cost_of_equity_percent": {
+            "description": "هزینه حقوق صاحبان سهام (درصد)",
+            "title": "Cost Of Equity Percent",
+            "type": "number"
+          },
+          "debt": {
+            "description": "ارزش بازار بدهی",
+            "title": "Debt",
+            "type": "number"
+          },
+          "debt_weight": {
+            "description": "وزن بدهی (اعشاری)",
+            "title": "Debt Weight",
+            "type": "number"
+          },
+          "debt_weight_percent": {
+            "description": "وزن بدهی (درصد)",
+            "title": "Debt Weight Percent",
+            "type": "number"
+          },
+          "equity": {
+            "description": "ارزش بازار حقوق صاحبان سهام",
+            "title": "Equity",
+            "type": "number"
+          },
+          "equity_weight": {
+            "description": "وزن حقوق صاحبان سهام (اعشاری)",
+            "title": "Equity Weight",
+            "type": "number"
+          },
+          "equity_weight_percent": {
+            "description": "وزن حقوق صاحبان سهام (درصد)",
+            "title": "Equity Weight Percent",
+            "type": "number"
+          },
+          "tax_rate": {
+            "description": "نرخ مالیات (اعشاری)",
+            "title": "Tax Rate",
+            "type": "number"
+          },
+          "tax_rate_percent": {
+            "description": "نرخ مالیات (درصد)",
+            "title": "Tax Rate Percent",
+            "type": "number"
+          },
+          "total_capital": {
+            "description": "مجموع سرمایه (E + D)",
+            "title": "Total Capital",
+            "type": "number"
+          },
+          "wacc": {
+            "description": "نرخ WACC (اعشاری)",
+            "title": "Wacc",
+            "type": "number"
+          },
+          "wacc_percent": {
+            "description": "نرخ WACC (درصد)",
+            "title": "Wacc Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "wacc",
+          "wacc_percent",
+          "equity",
+          "debt",
+          "total_capital",
+          "equity_weight",
+          "debt_weight",
+          "equity_weight_percent",
+          "debt_weight_percent",
+          "cost_of_equity",
+          "cost_of_equity_percent",
+          "cost_of_debt",
+          "cost_of_debt_percent",
+          "after_tax_cost_of_debt",
+          "after_tax_cost_of_debt_percent",
+          "tax_rate",
+          "tax_rate_percent"
+        ],
+        "title": "WaccResult",
+        "type": "object"
+      },
+      "ZeroGrowthRequest": {
+        "additionalProperties": false,
+        "description": "ورودی مدل رشد صفر؛ `P = D / r`.",
+        "properties": {
+          "d": {
+            "description": "سود تقسیمی ثابت",
+            "exclusiveMinimum": 0.0,
+            "title": "D",
+            "type": "number"
+          },
+          "r": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "exclusiveMinimum": 0.0,
+            "title": "R",
+            "type": "number"
+          }
+        },
+        "required": [
+          "d",
+          "r"
+        ],
+        "title": "ZeroGrowthRequest",
+        "type": "object"
+      },
+      "ZeroGrowthResult": {
+        "description": "پاسخ مدل رشد صفر؛ معادل `zero_growth_model`.\n\nAttributes:\n    price: قیمت سهام\n    dividend: سود تقسیمی ورودی، نمایش مجدد\n    required_return: نرخ بازده ورودی (اعشاری)\n    required_return_percent: نرخ بازده ورودی (درصد)\n    dividend_yield_percent: بازده سود تقسیمی به درصد",
+        "properties": {
+          "dividend": {
+            "description": "سود تقسیمی ثابت (D)",
+            "title": "Dividend",
+            "type": "number"
+          },
+          "dividend_yield_percent": {
+            "description": "بازده سود تقسیمی (درصد)",
+            "title": "Dividend Yield Percent",
+            "type": "number"
+          },
+          "price": {
+            "description": "قیمت سهام",
+            "title": "Price",
+            "type": "number"
+          },
+          "required_return": {
+            "description": "نرخ بازده مورد انتظار (اعشاری)",
+            "title": "Required Return",
+            "type": "number"
+          },
+          "required_return_percent": {
+            "description": "نرخ بازده مورد انتظار (درصد)",
+            "title": "Required Return Percent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "price",
+          "dividend",
+          "required_return",
+          "required_return_percent",
+          "dividend_yield_percent"
+        ],
+        "title": "ZeroGrowthResult",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "سرویس ارزیابی سهام — نگاشت REST توابع خالص لایه دامنه",
+    "title": "Stock Valuation API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/portfolio/optimize": {
+      "post": {
+        "description": "تحلیل سبد از بازده و کوواریانس سالانه.",
+        "operationId": "optimize_api_portfolio_optimize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioOptimizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioAnalysisResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "مرز کارا، سبد مماس، خط تخصیص سرمایه و سبد کامل",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/portfolio/statistics": {
+      "post": {
+        "description": "میانگین، کوواریانس، نوسان و همبستگی سالانه به ترتیب دارایی‌های ورودی.",
+        "operationId": "statistics_api_portfolio_statistics_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortfolioStatisticsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioStatisticsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "آماره سالانه بازده از سری قیمت هم‌تراز",
+        "tags": [
+          "portfolio"
+        ]
+      }
+    },
+    "/api/valuation/annual-dividend-yield": {
+      "post": {
+        "description": "محاسبه بازده سالانه سود تقسیمی: `(D / P) × 100`.",
+        "operationId": "annual_dividend_yield_api_valuation_annual_dividend_yield_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnualDividendYieldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualDividendYieldResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "بازده سالانه سود تقسیمی",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/capm": {
+      "post": {
+        "description": "محاسبه بازده مورد انتظار با CAPM: `r = r_f + β × (r_m − r_f)`.",
+        "operationId": "capm_api_valuation_capm_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CapmResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "بازده مورد انتظار با مدل CAPM",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/dcf": {
+      "post": {
+        "description": "تنزیل FCFF و ارزش انتهای دوره گوردون؛ پل EV به ارزش هر سهم.",
+        "operationId": "dcf_api_valuation_dcf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DcfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DcfResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با جریان نقدی تنزیل‌شده (DCF / FCFF)",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/dcf-scenarios": {
+      "post": {
+        "description": "ارزش‌گذاری همهٔ سناریوها با احتمال‌های ورودی و ترازنامهٔ مشترک.",
+        "operationId": "dcf_scenarios_api_valuation_dcf_scenarios_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DcfScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DcfScenarioResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری سناریوهای وزنی DCF و ریسک ارزش هر سهم",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/dcf-sensitivity": {
+      "post": {
+        "description": "ماتریس ارزش هر سهم و EV برای ترکیب‌های WACC × رشد پایانی؛ سلول نامعتبر null است.",
+        "operationId": "dcf_sensitivity_api_valuation_dcf_sensitivity_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DcfSensitivityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DcfSensitivityResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ماتریس حساسیت DCF نسبت به WACC و رشد پایانی",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/dividend-projection": {
+      "post": {
+        "description": "پیش‌بینی سود تقسیمی با رشد ثابت: `Dₜ = D₀(1+g)ᵗ`.",
+        "operationId": "dividend_projection_api_valuation_dividend_projection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DividendProjectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DividendProjectionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "پیش‌بینی سود تقسیمی دوره‌های آینده",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/expected-return": {
+      "post": {
+        "description": "محاسبه بازده مورد انتظار: `r = (D₁ / P₀) + g`.",
+        "operationId": "expected_return_api_valuation_expected_return_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpectedReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedReturnResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "بازده مورد انتظار سهام",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/football-field": {
+      "post": {
+        "description": "خلاصه بازه‌های ارزش روش‌ها به ترتیب ورودی.",
+        "operationId": "football_field_api_valuation_football_field_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FootballFieldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FootballFieldResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "خلاصه زمین فوتبال: دامنه کل، همپوشانی و موقعیت قیمت بازار",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/forecast": {
+      "post": {
+        "description": "ساخت جدول پیش‌بینی و سطرهای آماده DCF از محرک‌ها.",
+        "operationId": "forecast_api_valuation_forecast_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "پیش‌بینی سالانه از محرک‌های درآمد، حاشیه و سرمایه‌گذاری",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/gordon": {
+      "post": {
+        "description": "محاسبه قیمت و اجزای بازده با مدل گوردون: `P = D₀(1+g) / (r − g)`.",
+        "operationId": "gordon_api_valuation_gordon_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GordonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GordonResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با مدل رشد ثابت گوردون",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/growth-opportunities": {
+      "post": {
+        "description": "محاسبه قیمت با فرصت‌های رشد: `P = (EPS / r) + NPVGO`.",
+        "operationId": "growth_opportunities_api_valuation_growth_opportunities_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrowthOpportunitiesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthOpportunitiesResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با فرصت‌های رشد",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/multiples": {
+      "post": {
+        "description": "آماره‌های همتایان و ارزش تلویحی در چارک‌ها، میانه و میانگین.",
+        "operationId": "multiples_api_valuation_multiples_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MultiplesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpliedValuationResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش تلویحی با ضریب همتایان (P/E، P/B، P/S، EV/EBITDA، EV/Sales)",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/peg": {
+      "post": {
+        "description": "محاسبه نسبت PEG و تفسیر آن: `PEG = (P/E) / نرخ رشد سالانه`.",
+        "operationId": "peg_api_valuation_peg_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PegRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PegResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "نسبت PEG همراه تفسیر",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/preferred-stock": {
+      "post": {
+        "description": "محاسبه قیمت سهام ممتاز با سود تقسیمی ثابت و بی‌نهایت: `P = D / r`.",
+        "operationId": "preferred_stock_api_valuation_preferred_stock_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferredStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferredStockResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری سهام ممتاز",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/reverse-dcf": {
+      "post": {
+        "description": "یافتن نرخ رشد پایانی که ارزش هر سهم را برابر قیمت بازار می‌کند.",
+        "operationId": "reverse_dcf_api_valuation_reverse_dcf_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseDcfRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReverseDcfResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "رشد پایانی تلویحی قیمت بازار با DCF معکوس",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/risk-premium": {
+      "post": {
+        "description": "محاسبه حق‌الریسک: `(r − نرخ اوراق قرضه) × 100`.",
+        "operationId": "risk_premium_api_valuation_risk_premium_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskPremiumRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskPremiumResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "حق‌الریسک سهام در مقایسه با اوراق قرضه",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/single-period": {
+      "post": {
+        "description": "محاسبه قیمت سهام با مدل تک‌دوره‌ای: `P₀ = (D₁ + P₁) / (1 + r)`.",
+        "operationId": "single_period_api_valuation_single_period_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SinglePeriodRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SinglePeriodResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با مدل تک‌دوره‌ای",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/supernormal-growth": {
+      "post": {
+        "description": "محاسبه قیمت با رشد غیرعادی: `P₀ = Σ[Dₜ/(1+r)ᵗ] + Pₙ/(1+r)ⁿ`.",
+        "operationId": "supernormal_growth_api_valuation_supernormal_growth_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupernormalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupernormalResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با مدل رشد غیرعادی چندمرحله‌ای",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/sustainable-growth": {
+      "post": {
+        "description": "استخراج NPVGO از بازده حقوق صاحبان سهام و نسبت نگهداری سود.",
+        "operationId": "sustainable_growth_api_valuation_sustainable_growth_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SustainableGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SustainableGrowthResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری رشد پایدار و فرصت‌های رشد از ROE",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/wacc": {
+      "post": {
+        "description": "محاسبه WACC: `(E/V)×rₑ + (D/V)×r_d×(1 − t)`.",
+        "operationId": "weighted_average_cost_of_capital_api_valuation_wacc_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaccRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaccResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "میانگین موزون هزینه سرمایه (WACC)",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/api/valuation/zero-growth": {
+      "post": {
+        "description": "محاسبه قیمت سهام با رشد صفر: `P = D / r`.",
+        "operationId": "zero_growth_api_valuation_zero_growth_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZeroGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZeroGrowthResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "خطای دامنه (اعتبارسنجی یا محاسبه)"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ارزش‌گذاری با مدل رشد صفر",
+        "tags": [
+          "valuation"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "پاسخ ساده برای بررسی دسترس‌پذیری API از فرانت‌اند React.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "بررسی سلامت سرویس"
+      }
+    }
+  }
+}

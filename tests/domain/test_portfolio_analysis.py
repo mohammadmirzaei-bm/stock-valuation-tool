@@ -18,6 +18,7 @@ from stock_valuation.domain.errors import CalculationError, ValidationError
 from stock_valuation.domain.portfolio import PortfolioPoint
 from stock_valuation.domain.portfolio_analysis import (
     PortfolioAnalysis,
+    _assets,
     _complete_portfolio,
     analyze_portfolio,
 )
@@ -259,6 +260,66 @@ class TestValidationAndInvariants(unittest.TestCase):
             first.tangency = None  # type: ignore[misc]
         with self.assertRaises(FrozenInstanceError):
             first.complete_portfolio.tangency_weight = 0.0  # type: ignore[misc]
+
+
+class TestAnalysisMutationGaps(unittest.TestCase):
+    """پیش‌فرض فقط‌خرید و مرزهای دفاعی تحلیل سبد کامل"""
+
+    def test_default_is_long_only(self):
+        result = analyze_portfolio(
+            NAMES, [0.10, 0.12], [[0.04, 0.072], [0.072, 0.16]],
+            RF, AVERSION, frontier_points=5,
+        )
+        self.assertEqual(result.min_variance.weights, [1.0, 0.0])
+        self.assertEqual(result.tangency.weights, [1.0, 0.0])
+
+    def test_non_sized_mean_returns_rejected(self):
+        with self.assertRaises(ValidationError):
+            _analysis(mean_returns=3.5)
+
+    def test_zero_variance_asset_volatility(self):
+        result = _analysis(mean_returns=[0.02, 0.10],
+                           covariance=[[0.0, 0.0], [0.0, 0.16]])
+        self.assertEqual([asset.volatility for asset in result.assets], [0.0, 0.4])
+
+    def test_positive_excess_rounding_to_zero_is_not_defensive_clip(self):
+        """صفر ناشی از سرریز مخرج، بازده مازاد منفی محسوب نمی‌شود."""
+        complete = _analysis(covariance=[[4.0, 0.0], [0.0, 16.0]],
+                             risk_aversion=1e308).complete_portfolio
+        self.assertEqual(complete.tangency_weight, 0.0)
+        self.assertIs(complete.clipped_to_zero, False)
+        self.assertIs(complete.leverage_capped, False)
+
+    def test_flags_are_exact_booleans(self):
+        complete = _analysis().complete_portfolio
+        self.assertIs(complete.leverage_capped, False)
+        self.assertIs(complete.clipped_to_zero, False)
+
+    def test_defensive_zero_excess_sets_flag(self):
+        synthetic = PortfolioPoint([0.5, 0.5], RF, 0.04, 0.2, 0.0)
+        complete = _complete_portfolio(synthetic, RF, AVERSION, 1.0)
+        self.assertIs(complete.clipped_to_zero, True)
+        self.assertEqual(complete.tangency_weight, 0.0)
+        self.assertEqual(complete.risk_free_weight, 1.0)
+
+    def test_zero_variance_positive_excess_is_calculation_error(self):
+        synthetic = PortfolioPoint([0.5, 0.5], 0.06, 0.0, 0.0, None)
+        with self.assertRaises(CalculationError):
+            _complete_portfolio(synthetic, RF, AVERSION, 1.0)
+
+    def test_exact_max_leverage_is_not_capped(self):
+        weight = _analysis().complete_portfolio.tangency_weight
+        complete = _analysis(max_leverage=weight).complete_portfolio
+        self.assertEqual(complete.tangency_weight, weight)
+        self.assertIs(complete.leverage_capped, False)
+
+
+class TestAssetPoints(unittest.TestCase):
+    """گارد مستقیم واریانس بولی که اعتبارسنجی عمومی زودتر رد می‌کند"""
+
+    def test_bool_variance_rejected(self):
+        with self.assertRaises(ValidationError):
+            _assets(NAMES, MU, [[True, 0.0], [0.0, 0.04]])
 
 
 if __name__ == "__main__":

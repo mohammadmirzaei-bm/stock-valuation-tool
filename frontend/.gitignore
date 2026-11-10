@@ -1,0 +1,13 @@
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.*
+!.env.example
+coverage
+.vite
+.DS_Store
+*.log
+test-results
+playwright-report
