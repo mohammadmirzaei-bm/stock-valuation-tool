@@ -222,6 +222,19 @@ hide the guards they were written for:
   assert the `_correlation()` clipping, but the covariance validator now
   raises on the same input through the PSD gate.
 
+### Iteration 3 tests
+
+| File and class | Tests | Main purpose |
+|---|---:|---|
+| `test_portfolio_stats.py` — `TestCenteringFloatingPoint` (new) | 2 | large mean offset (`1e8`, `1e6`) centering residual; kills `sample_statistics__mutmut_39/40` |
+| `test_portfolio.py` — `TestTangencyMutationGaps` | 1 | exact `(1/3,2/3)` normalization; kills `tangency_portfolio__mutmut_65` |
+| `test_portfolio_analysis.py` — `TestAnalysisMutationGaps` / `TestAssetPoints` | 2 | negative-weight clip via helper; signed-zero volatility; kills `_complete_portfolio__mutmut_23-26`, `_assets__mutmut_13/16` |
+| `test_dcf_analysis.py` — `TestReverseDcf` | 7 | width-fallback gate: three bridge-scale accept fixtures, one accumulated-rounding accept, one large-share-count reject, plus two round-trip guards; the pre-existing cancellation case now expects `CalculationError`; kills 11 `reverse_dcf_implied_growth` mutants |
+
+All are plain `unittest.TestCase`, standard library only, Persian docstrings,
+and no error-message-text assertions. The reverse-DCF fixtures were verified
+to reproduce bit-identically on Python 3.11.4 and 3.12.14.
+
 ## 4. Behaviour covered
 
 ### Portfolio performance and clipping
@@ -384,6 +397,106 @@ the fixtures used during the plan review, not as a general property.
 | `__mutmut_128` | **Equivalent.** `break` became `return`. The flat-subspace scan is the last statement before the elimination loop that the `break` also skips, so both leave the function. |
 | `__mutmut_65` (pre-existing region) | **Demoted from killed to survived.** `abs(correlation) >= 1 + CORRELATION_TOLERANCE` cannot be observed any more: a correlation above 1 makes the matrix indefinite, so the PSD gate raises the same `ValidationError` type. The mutant is equivalent under the new contract, not lost coverage. |
 | `__mutmut_67` (pre-existing region) | Same argument with `2.0 + CORRELATION_TOLERANCE`: every input the relaxed bound would admit is rejected by the PSD gate. |
+
+### 5.6 Iteration 3 — residual logic survivor triage
+
+This iteration closes §9 item 3 for the four in-scope modules
+(`portfolio.py`, `portfolio_analysis.py`, `portfolio_stats.py`,
+`dcf_analysis.py`). It starts from the floating-point precision mutants
+(`sample_statistics__mutmut_39/40`, `_long_only_min_variance__mutmut_17`)
+and triages every remaining non-string logic survivor.
+
+Both runners are green on the unmutated code, on Python 3.11.4 (base) and
+3.12.14 (`finance`):
+
+- `pytest tests -q`: **495 passed**
+- `python -m unittest discover -s tests -t .`: **495 OK**
+
+The suite grew from 483 to 495 (**+12**, §3). Twenty logic mutants were
+killed; the rest are classified below. The touched modules were re-run from
+a cleared per-file cache (test-only edits do not invalidate mutmut verdicts).
+
+#### Per-module result
+
+| Module | Killed / survived | Mutants | Logic survivors |
+|---|---:|---:|---:|
+| `portfolio.py` | 433 / 22 | 455 | 4 (all equivalent) |
+| `portfolio_analysis.py` | 191 / 7 | 198 | 0 |
+| `portfolio_stats.py` | 164 / 35 | 199 | 11 (8 equivalent, 3 caller-scoped) |
+| `dcf_analysis.py` | 428 / 56 | 484 | 13 (7 equivalent, 6 deferred) |
+
+The other 92 survivors across the four modules are message-string
+candidates, excluded by the unchanged testing policy (§5.3).
+
+#### Killed in this iteration
+
+| Mutants | Fixture |
+|---|---|
+| `sample_statistics__mutmut_39/40` | Large mean offset (`1e8`, `1e6`) with small variations: flipping one centering sign adds `2·mean_x·Σ(y_t−mean_y)`, a non-zero IEEE-754 residual that breaks `assertAlmostEqual` on covariance/correlation (`TestCenteringFloatingPoint`). |
+| `tangency_portfolio__mutmut_65` | Excess `(1,2)` with identity covariance gives weights exactly `(1/3,2/3)`; multiply-instead-of-divide normalization shifts one ulp. |
+| `_assets__mutmut_13/16` | Negative-zero variance diagonal: `math.copysign` distinguishes `+0.0` from `−0.0` volatility. |
+| `_complete_portfolio__mutmut_23-26` | Direct helper call with negative risk aversion reaches the negative-weight clip branch; the §5.2 caller-scoped mutants are now killed via the helper precedent. |
+| `reverse_dcf_implied_growth__mutmut_97/98/103/109/112/113/114/121/122/132/133` | Width-fallback gate (§7.2): three lateral-accept cases (cash / preferred-equity / minority-interest dominant bridge) and one large-share-count reject case. |
+
+#### Step B — `_long_only_min_variance__mutmut_17` is equivalent in IEEE-754
+
+The mutation doubles the single-constraint KKT right-hand side
+(`rhs = [1.0]` → `[2.0]`, `portfolio.py:249`). No floating-point boundary
+fixture can distinguish it, for two independent reasons:
+
+1. **Exact ×2 commutes through renormalization.** The KKT system is linear
+   in `rhs`, so the raw solution doubles. Multiplication by 2 is exact in
+   IEEE-754 (exponent shift, no mantissa rounding, no overflow for
+   sum-to-one weights). `_clip_long_only` (`portfolio.py:206-214`) preserves
+   sign, so the same components clip, and renormalizes by the total:
+   `(2·a)/(2·b) == a/b` bit-for-bit. The returned weights, the variance
+   `dot(w, Σw)`, and the strict `<` support comparison are identical.
+2. **The absolute clip gate is shadowed by support dominance.** The gate
+   `min(weights) < -LONG_ONLY_WEIGHT_TOLERANCE` (`1e-12`) is absolute, so
+   doubling could push a tiny negative weight past it. But any support whose
+   weights clip to zero on a subset yields a feasible portfolio on that
+   subset whose variance is ≥ the subset's own KKT minimum. Subsets are
+   enumerated first (`_supports` yields ascending sizes) and the comparison
+   is strict (`variance < best_variance`), so a clipping support can never
+   win — whether it passes or fails the gate.
+
+Corroboration: 20,000 random PSD 2–3 asset fixtures produced zero
+distinguishing outputs, and the mutant survives all 495 tests.
+`_gmv_weights__mutmut_13` (`[1.0]*n` → `[2.0]*n`, `portfolio.py:282`) is the
+same ×2-renormalization equivalence on the allow-short path.
+
+#### Equivalent logic survivors (final)
+
+| Mutants | Scope and evidence |
+|---|---|
+| `_gmv_weights__mutmut_13`, `_long_only_min_variance__mutmut_17` | ×2 RHS cancels exactly in renormalization; clip gate shadowed by support dominance (above). |
+| `_performance__mutmut_17` | `variance < 0` → `<= 0`: at zero the clamp still returns numerical zero. |
+| `_supports__mutmut_7` | Extra size `n+1`: `combinations(range(n), n+1)` is empty (`portfolio.py:200`). |
+| `_copy_series__mutmut_10` | Sentinel `length = -1` → `-2`: only its sign is tested (`length < 0`); overwritten on the first iteration (`portfolio_stats.py:99-105`). |
+| `_correlation__mutmut_7/28/32` | Initialization overwritten; `>1.0`→`>=1.0` and `<-1.0`→`<=-1.0` assign the same boundary value (`portfolio_stats.py:244-259`). |
+| `sample_statistics__mutmut_1` | `_MIN_RETURN_OBSERVATIONS=2 <= SAMPLE_COVARIANCE_DDOF=1` is false; `<` is also false — guard body never runs (`portfolio_stats.py:185`). |
+| `sample_statistics__mutmut_8` | `positive=False` → `None`: both falsy in `if positive and number <= 0` (`portfolio_stats.py:115`). |
+| `sample_statistics__mutmut_26/31` | Zero initialization overwritten; symmetric fill from `range(asset_count)` recomputes already-mirrored entries identically (`portfolio_stats.py:197-199`). |
+| `reverse_dcf_implied_growth__mutmut_66/70/89` | Equality shadowed by the preceding positive-tolerance branch (`dcf_analysis.py:523-540`). |
+| `reverse_dcf_implied_growth__mutmut_77` | `range(200)` → `201`: the loop always exits earlier via convergence or the `high-low < 1e-12` fallback. |
+| `reverse_dcf_implied_growth__mutmut_108` | Dropping `abs(EV)` from the bridge max: in the fallback regime heavy cancellation forces `debt+mi+pe ≈ EV+cash`, so the sum `≥ abs(EV)` and the max is unchanged. 0 kills in 20,000 mixed trials. |
+| `reverse_dcf_implied_growth__mutmut_110/115` | The `1.0` floor (→ drop / → `2.0`): the fallback is only reached when the per-share rounding noise `ulp(bridge)/shares` exceeds `1e-9`, forcing `bridge ≫ 2`; the floor never binds. 0 kills in 20,000 mixed trials. |
+
+#### Caller-scoped unreachable (final)
+
+| Mutants | Upstream validator |
+|---|---|
+| `_copy_series__mutmut_4` | `len(values)==0` → `==1`: `validate_asset_count` requires `MIN_ASSETS=2`, so a single-asset series raises the same `ValidationError` type regardless (`portfolio_stats.py:95-97`, `validators.py:475`). |
+| `_copy_series__mutmut_17/18` | `length < 0` → `<= 0` / `< 1`: an empty series (`length==0`) always fails the `length < min_length` check (`min_length ≥ 2`), so re-entering the first-series branch is never observed (`portfolio_stats.py:104-109`). |
+
+#### Deferred boundary / policy survivors (reverse-DCF gate)
+
+`reverse_dcf_implied_growth__mutmut_60/64/86/93` (`<=`↔`<` at the exact
+price/width tolerance) and `125` (`>`→`>=` at `residual == acceptance_tolerance`)
+are measure-zero knife-edges; `124` (`ulp(1.0)`→`ulp(2.0)`, a factor-2 band)
+needs `residual ∈ (atol, 2·atol]`, not found in 40,000 randomized reject
+trials. These remain deferred with the §7.2 fallback product decision
+(§9 item 2); they are tolerance-policy cases, not proven equivalents.
 
 ## 6. Confidence and information gaps
 
@@ -555,10 +668,13 @@ Two environment traps observed during iteration 2:
    singular PSD input stays valid.
 2. Decide the reverse-DCF fallback policy and correct the residual gate if
    needed; update the characterizing test together with the behaviour (§7.2).
-3. Triage the remaining logic survivors: 45 in-scope, 80 outside the four
-   modules, and the eight non-message survivors in the pre-existing part of
-   `validate_covariance_matrix` (§5.5). Start with
-   `sample_statistics__mutmut_39/40` and `_long_only_min_variance__mutmut_17`.
+3. ~~Triage the remaining logic survivors in the four in-scope modules.~~
+   Done in iteration 3 (§5.6): 20 logic mutants killed (including
+   `sample_statistics__mutmut_39/40`), `_long_only_min_variance__mutmut_17`
+   proven equivalent in IEEE-754, and the rest classified as equivalent,
+   caller-scoped, or deferred. Still open: 80 outside the four modules and
+   the eight non-message survivors in the pre-existing part of
+   `validate_covariance_matrix` (§5.5).
 4. Semantically review the message-string candidates (638 after iteration 2)
    before quoting any equivalence-adjusted mutation score. Treat the current
    80.66% as an **unadjusted** raw score.
@@ -584,6 +700,17 @@ Iteration 2:
   updated correlation-boundary expectations.
 - `tests/domain/test_portfolio.py` — split GMV guard, direct `_performance` and
   `_gmv_weights` calls, rescaled tangency fixture.
+
+Iteration 3 — tests only (residual logic survivor triage, §5.6):
+
+- `tests/domain/test_portfolio_stats.py` — new `TestCenteringFloatingPoint`.
+- `tests/domain/test_portfolio.py` — exact tangency normalization fixture.
+- `tests/domain/test_portfolio_analysis.py` — negative-weight clip and
+  signed-zero volatility fixtures.
+- `tests/domain/test_dcf_analysis.py` — four reverse-DCF width-fallback gate
+  fixtures.
+- `docs/mutation_testing_report.md` — §3 iteration-3 tests, §5.6 classification,
+  §9 item 3 closed.
 
 No changes were made to `setup.cfg` or dependencies. No commit was created as
 part of this work.
