@@ -499,16 +499,144 @@ class TestReverseDcf(unittest.TestCase):
         self.assertEqual(result.status, "market_price_below_range")
         self.assertIsNone(result.implied_growth)
 
-    def test_width_fallback_returns_growth_when_price_cancels(self):
-        """وقتی تفریق بدهی بزرگ تطابق قیمت را ناممکن می‌کند، گارد عرض بازه فعال است."""
-        projections = [CashFlowProjection(1e12, 0.0, 0.0, 0.0)]
+    def test_width_fallback_raises_when_price_cancels(self):
+        """وقتی تفریق بدهی بزرگ تطابق قیمت را ناممکن می‌کند، کرانه عرضی solved نمی‌دهد."""
+        # بدهی ≈ EV در رشد ۳٪ منهای قیمت هدف؛ EV و بدهی در پل ارزش
+        # همدیگر را حذف می‌کنند و قیمت هرگز به تلورانس نمی‌رسد.
+        for ebit in (1e12, 1e14, 1e15):
+            projections = [CashFlowProjection(ebit, 0.0, 0.0, 0.0)]
+            enterprise_value = dcf_valuation(
+                projections, 0.1, 0.03, 1.0, 0.0
+            ).enterprise_value
+            debt = enterprise_value - 1.0001
+            with self.subTest(ebit=ebit), self.assertRaises(CalculationError):
+                reverse_dcf_implied_growth(
+                    projections, 0.1, 1.0, 0.0, 1.0001, debt=debt
+                )
+
+    def test_width_fallback_accepts_when_bridge_rounding_dominates(self):
+        """کرانه عرضی وقتی نویز گردکردن پل بر تلورانس قیمت غلبه دارد solved می‌دهد."""
+        # نقد و سهام ممتاز بسیار بزرگ‌تر از EV: تفریق پل رقم‌های باارزش را حذف
+        # می‌کند و قیمت هرگز به تلورانس ۱e-۹ نمی‌رسد؛ ولی باقیمانده در تلورانس
+        # پذیرش (اپسیلون ماشین × بزرگ‌ترین جمله پل / سهام) می‌ماند و solved می‌شود.
+        projections = [CashFlowProjection(1482020422.9751801, 0.0, 0.0, 0.0)]
         result = reverse_dcf_implied_growth(
-            projections, 0.1, 1.0, 0.0, 1.0001, debt=14285714285713.283
+            projections, 0.1, 2.852848494819785, 0.0, 12.575141400908894,
+            cash=1062525436813397.5, debt=106254396206865.14,
+            preferred_equity=956289565861784.0,
         )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, "solved")
+        self.assertAlmostEqual(result.implied_growth, 0.02, places=6)
+
+    def test_width_fallback_bridge_keeps_preferred_equity_sign(self):
+        """علامت سهام ممتاز در بزرگی پل باید مثبت بماند تا تلورانس پذیرش درست باشد."""
+        # سهام ممتاز ≈ نقد و هر دو ≫ EV: حذف یا منفی‌کردن جمله ممتاز، بزرگی پل
+        # و تلورانس پذیرش را چنان کوچک می‌کند که باقیمانده از آن فراتر می‌رود.
+        projections = [CashFlowProjection(7407215.94154978, 0.0, 0.0, 0.0)]
+        result = reverse_dcf_implied_growth(
+            projections, 0.1, 482.6884338613261, 0.0, 0.15125237911647416,
+            cash=13588759390895.303, debt=39244882232.73212,
+            preferred_equity=13549607098788.834,
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, "solved")
+        self.assertAlmostEqual(result.implied_growth, 0.02, places=6)
+
+    def test_width_fallback_bridge_keeps_minority_interest_sign(self):
+        """علامت منافع اقلیت در بزرگی پل باید مثبت بماند تا تلورانس پذیرش درست باشد."""
+        # منافع اقلیت ≈ نقد و هر دو ≫ EV: منفی‌کردن جمله اقلیت، بزرگی پل و
+        # تلورانس پذیرش را کوچک می‌کند و نقطه میانی دیگر پذیرفته نمی‌شود.
+        projections = [CashFlowProjection(792309.5114981405, 0.0, 0.0, 0.0)]
+        result = reverse_dcf_implied_growth(
+            projections, 0.1, 4104.7977015532615, 0.0, 0.31259331396961926,
+            cash=3575167563988.16, debt=10284320870.554615,
+            minority_interest=3564893145703.367,
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.status, "solved")
+        self.assertAlmostEqual(result.implied_growth, 0.02, places=6)
+
+    def test_width_fallback_acceptance_tolerance_scales_with_share_count(self):
+        """تلورانس پذیرش با تعداد سهام مقیاس می‌شود؛ سهام زیاد نباید خطا را بپوشاند."""
+        # همان سناریوی حذف قیمت با سهام زیاد: تلورانس پذیرش واقعی (اپسیلون ×
+        # پل / سهام) کوچک می‌ماند و باقیمانده از آن فراتر می‌رود؛ ضرب به‌جای
+        # تقسیم بر سهام، تلورانس را چنان بزرگ می‌کند که خطا را می‌پوشاند.
+        projections = [CashFlowProjection(1e12, 0.0, 0.0, 0.0)]
+        enterprise_value = dcf_valuation(
+            projections, 0.1, 0.03, 1.0, 0.0
+        ).enterprise_value
+        shares = 1e6
+        with self.assertRaises(CalculationError):
+            reverse_dcf_implied_growth(
+                projections, 0.1, shares, 0.0, 1.0001 / shares,
+                debt=enterprise_value - 1.0001,
+            )
+
+    def test_width_fallback_accepts_accumulated_rounding_residual(self):
+        """کرانه عرضی باید تطابق در حد نویز گردکردن انباشته EV و پل را بپذیرد."""
+        # ده سال جریان نقدی با بدهی هم‌مقیاس EV؛ قیمت بازار طوری است که
+        # تطابق فقط در حد چند اپسیلون ماشین ممکن است (بیش از یک ulp).
+        projections = [CashFlowProjection(1e11, 0.0, 0.0, 0.0) for _ in range(10)]
+        shares = 1e6
+        enterprise_value = dcf_valuation(
+            projections, 0.1, 0.03, shares, 0.0
+        ).enterprise_value
+        debt = enterprise_value - 1.0001 * shares
+        for price in (1.00120011, 1.0048644763999999):
+            with self.subTest(price=price):
+                result = reverse_dcf_implied_growth(
+                    projections, 0.1, shares, 0.0, price, debt=debt
+                )
+                self.assertEqual(result.status, "solved")
+                breakdown = dcf_valuation(
+                    projections, 0.1, result.implied_growth, shares, 0.0, debt=debt
+                )
+                eps_unit = (
+                    math.ulp(1.0)
+                    * max(abs(breakdown.enterprise_value), debt, 1.0)
+                    / shares
+                )
+                residual = abs(breakdown.value_per_share - price)
+                # باقیمانده در بازه (۱, ۱۶] اپسیلون است؛ ضریب ۱ آن را رد می‌کرد.
+                self.assertGreater(residual, eps_unit)
+                self.assertLessEqual(residual, 16.0 * eps_unit)
+
+    def test_well_conditioned_round_trip_still_solved(self):
+        """گارد تلورانس پذیرش نباید حالت خوش‌شرط را از حل بیندازد."""
+        price = self._price_at(self.GROWTH)
+        result = self._solve(price)
         self.assertEqual(result.status, "solved")
         self.assertIsNotNone(result.implied_growth)
-        self.assertLess(abs(result.implied_growth - 0.03), 1e-12)
-        self.assertTrue(math.isfinite(result.enterprise_value))
+        self.assertLess(abs(result.implied_growth - self.GROWTH), 1e-6)
+
+    def test_solved_price_matches_market_within_acceptance_tolerance(self):
+        """هر پاسخ solved باید قیمت بازار را در تلورانس پذیرش بازتولید کند."""
+        growth_rates = (REVERSE_DCF_MIN_GROWTH, -0.05, self.GROWTH,
+                        self.WACC - validators.MIN_SPREAD)
+        for growth in growth_rates:
+            price = self._price_at(growth)
+            result = self._solve(price)
+            self.assertEqual(result.status, "solved")
+            breakdown = dcf_valuation(
+                _reference_dcf_projections(),
+                self.WACC,
+                result.implied_growth,
+                self.SHARES,
+                self.TAX,
+                cash=self.CASH,
+                debt=self.DEBT,
+            )
+            acceptance_tolerance = max(
+                1e-9 * max(1.0, price),
+                16.0 * math.ulp(1.0)
+                * max(abs(breakdown.enterprise_value), self.DEBT + self.CASH, 1.0)
+                / self.SHARES,
+            )
+            with self.subTest(growth=growth):
+                self.assertLessEqual(
+                    abs(breakdown.value_per_share - price), acceptance_tolerance
+                )
 
     def test_round_trip_recovers_growth(self):
         price = self._price_at(self.GROWTH)
