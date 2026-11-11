@@ -4,6 +4,7 @@
     python3 -m unittest discover -s tests -t . -v
 """
 
+import math
 import unittest
 from collections import deque
 from dataclasses import FrozenInstanceError
@@ -277,6 +278,35 @@ class TestStatisticsMutationGaps(unittest.TestCase):
     def test_price_series_count_mismatch_rejected(self):
         with self.assertRaises(ValidationError):
             statistics_from_prices(["الف", "ب", "ج"], _PRICES, 1)
+
+
+class TestCenteringFloatingPoint(unittest.TestCase):
+    """باقیمانده شناور مرکزشدن با میانگین بزرگ و تقویت آن با تغییر علامت"""
+
+    def test_large_offset_identical_series(self):
+        # سری یکسان با میانگین ۱e۸: مجموع انحرافات از میانگین ریاضی صفر است
+        # ولی باقیمانده IEEE-754 دارد؛ تغییر علامت مرکزشدن آن را در ۲×میانگین
+        # ضرب می‌کند و کوواریانس/نوسان را به‌شدت جابه‌جا می‌سازد.
+        offset = 1e8
+        series = [offset - 0.3, offset + 0.4, offset - 0.1]
+        result = sample_statistics([series, series], 1)
+        self.assertEqual(result.mean_returns, [offset, offset])
+        self.assertAlmostEqual(result.covariance[0][0], 0.13, places=7)
+        self.assertAlmostEqual(result.covariance[0][1], 0.13, places=7)
+        self.assertAlmostEqual(result.volatilities[0], math.sqrt(0.13), places=7)
+        self.assertEqual(result.correlation, [[1.0, 1.0], [1.0, 1.0]])
+
+    def test_large_offset_distinct_series(self):
+        # دو سری متمایز با میانگین ۱e۶: باقیمانده مرکزشدن در کوواریانس
+        # برون‌قطری و همبستگی ضرب می‌شود؛ هر دو با تلورانس ۱e-۷ سنجیده می‌شوند.
+        offset = 1e6
+        x = [offset + 0.1, offset + 0.2, offset - 0.3]
+        y = [offset + 0.3, offset - 0.1, offset - 0.2]
+        result = sample_statistics([x, y], 1)
+        self.assertAlmostEqual(result.covariance[0][0], 0.07, places=7)
+        self.assertAlmostEqual(result.covariance[0][1], 0.035, places=7)
+        self.assertAlmostEqual(result.covariance[1][1], 0.07, places=7)
+        self.assertAlmostEqual(result.correlation[0][1], 0.5, places=7)
 
 
 class TestCorrelationBoundaries(unittest.TestCase):

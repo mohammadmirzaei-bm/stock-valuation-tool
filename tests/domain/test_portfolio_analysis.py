@@ -313,6 +313,15 @@ class TestAnalysisMutationGaps(unittest.TestCase):
         self.assertEqual(complete.tangency_weight, weight)
         self.assertIs(complete.leverage_capped, False)
 
+    def test_negative_weight_is_clipped_to_zero(self):
+        # ریسک‌گریزی منفی y* را منفی می‌کند؛ شاخه برش وزن باید آن را صفر
+        # و پرچم clipped_to_zero را روشن کند (فراخوانی مستقیم کمک‌تابع).
+        tangency = portfolio_module.tangency_portfolio(MU, COV, RF, False)
+        complete = _complete_portfolio(tangency, RF, -AVERSION, 1.0)
+        self.assertEqual(complete.tangency_weight, 0.0)
+        self.assertIs(complete.clipped_to_zero, True)
+        self.assertEqual(complete.risky_weights, [0.0, 0.0])
+
 
 class TestAssetPoints(unittest.TestCase):
     """گارد مستقیم واریانس بولی که اعتبارسنجی عمومی زودتر رد می‌کند"""
@@ -320,6 +329,12 @@ class TestAssetPoints(unittest.TestCase):
     def test_bool_variance_rejected(self):
         with self.assertRaises(ValidationError):
             _assets(NAMES, MU, [[True, 0.0], [0.0, 0.04]])
+
+    def test_negative_zero_variance_volatility_is_positive_zero(self):
+        # واریانس ‎-0.0‎ از گارد منفی عبور می‌کند؛ نوسان باید ‎+0.0‎ بماند
+        # نه ‎-0.0‎ که جذر منفی صفر می‌سازد.
+        assets = _assets(["الف"], [0.1], [[-0.0]])
+        self.assertEqual(math.copysign(1.0, assets[0].volatility), 1.0)
 
 
 if __name__ == "__main__":

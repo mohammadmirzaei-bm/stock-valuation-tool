@@ -485,7 +485,10 @@ def reverse_dcf_implied_growth(
 
     Raises:
         ValidationError: در صورت ورودی نامعتبر (از جمله FCFF پایانی غیرمثبت)
-        CalculationError: در صورت شکست همگرایی جستجوی نصف‌سازی
+        CalculationError: در صورت شکست همگرایی جستجوی نصف‌سازی؛ از جمله وقتی
+            بازه جستجو به کرانه عرضی می‌رسد ولی ارزش هر سهم در نقطه میانی
+            به‌دلیل حذف رقم‌های باارزش در تفریق بدهی/نقد بزرگ با قیمت بازار
+            تطابق ندارد (چنین نقطه‌ای هرگز solved گزارش نمی‌شود)
     """
     require_finite_number(market_price, "قیمت بازار")
     validate_positive_number(market_price, "قیمت بازار")
@@ -539,7 +542,34 @@ def reverse_dcf_implied_growth(
             else:
                 high = middle
             if high - low < 1e-12:
-                implied_growth = (low + high) / 2
+                middle = (low + high) / 2
+                breakdown_at_middle = value_at(middle)
+                residual = abs(breakdown_at_middle.value_per_share - market_price)
+                # تلورانس پذیرش کرانه عرضی: علاوه بر تلورانس معمول قیمت،
+                # خطای گردکردن محاسبه EV و پل EV ← حقوق صاحبان سهام را هم
+                # می‌پذیرد. مقیاس آن اپسیلون ماشین × بزرگ‌ترین جمله تفریق
+                # است؛ ضریب ۱۶ خطای انباشته چندمرحله‌ای (تنزیل جریان‌ها،
+                # تقسیم بر (r−g)، توان‌ها و چهار جمع/تفریق پل) را پوشش
+                # می‌دهد، چون یک تفریق تنها نیست. این مقیاس همچنان بسیار
+                # کوچک‌تر از خطای عرض بازه در حالت بدهی سنگین است و آن
+                # حالت هرگز solved گزارش نمی‌شود.
+                bridge_magnitude = max(
+                    abs(breakdown_at_middle.enterprise_value),
+                    debt + minority_interest + preferred_equity + cash,
+                    1.0,
+                )
+                acceptance_tolerance = max(
+                    tolerance,
+                    16.0 * math.ulp(1.0) * bridge_magnitude / shares_outstanding,
+                )
+                if residual > acceptance_tolerance:
+                    raise CalculationError(
+                        "❌ همگرایی جستجوی رشد تلویحی در DCF معکوس ممکن نشد! "
+                        "حساسیت قیمت به رشد در حذف رقم‌های باارزش تفریق "
+                        "بدهی و نقد بزرگ گم شده است؛ ارزش هر سهم در نقطه "
+                        "میانی با قیمت بازار تطابق ندارد."
+                    )
+                implied_growth = middle
                 break
         if implied_growth is None:
             raise CalculationError(
