@@ -494,6 +494,12 @@ class TestTangencyMutationGaps(unittest.TestCase):
         for got, want in zip(point.weights, [23.0 / 81.0, 58.0 / 81.0, 0.0]):
             self.assertAlmostEqual(got, want, places=12)
 
+    def test_long_only_weights_exact_normalization(self):
+        # بازده مازاد (۱، ۲) با کوواریانس همانی: وزن‌ها دقیقاً (۱/۳، ۲/۳)
+        # می‌شوند؛ ضرب به‌جای تقسیم در نرمال‌سازی یک ulp اختلاف می‌سازد.
+        point = tangency_portfolio([1.03, 2.03], _identity(2, 1.0), RF, False)
+        self.assertEqual(point.weights, [1 / 3, 2 / 3])
+
 
 class TestClipLongOnly(unittest.TestCase):
     """برش منفی کوچک، مرز تلورانس و نرمال‌سازی مستقیم وزن‌ها"""
