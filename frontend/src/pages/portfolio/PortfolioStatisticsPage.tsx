@@ -23,7 +23,7 @@ const PRESETS = [252, 52, 12, 1];
 function corrBg(v: number): React.CSSProperties {
   const clamped = Math.max(-1, Math.min(1, v));
   const intensity = Math.abs(clamped) * 0.5 + 0.05;
-  const rgb = clamped >= 0 ? "76, 175, 122" : "229, 100, 95"; // positive / negative
+  const rgb = clamped >= 0 ? "24, 122, 89" : "194, 36, 72"; // positive / negative
   return { backgroundColor: `rgba(${rgb}, ${intensity})` };
 }
 
