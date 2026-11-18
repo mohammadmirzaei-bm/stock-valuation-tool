@@ -13,6 +13,7 @@ env/
 
 # فرانت‌اند React
 frontend/
+frontend.old-*/
 node_modules/
 
 # آرتیفکت‌های تست و پوشش کد
