@@ -34,7 +34,7 @@ export function Chip({ children, tone = "neutral", onRemove, className }: ChipPr
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 rounded-full hover:bg-black/20"
+          className="ml-0.5 rounded-full hover:bg-primary/10"
           aria-label="حذف"
         >
           <X className="h-3 w-3" />

@@ -1,91 +1,72 @@
 /* Stock Valuation frontend — base styles.
-   Theme (dark) tokens, typography, RTL layout and LTR number/formula islands.
-   The design spec is authoritative: dark theme, Persian RTL, Latin digits by
-   default, tabular monospace numerals. */
+   Cursor-inspired warm theme: cream canvas, warm near-black ink, oklab-style
+   warm borders, orange brand accent. Persian RTL with LTR number/formula
+   islands and tabular monospace numerals. Every color is a CSS variable so
+   the whole app (and ECharts, which reads these at runtime) follows one swap. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ----- Theme tokens (dark is the default; light is a variable swap later) ----- */
+/* ----- Theme tokens (Cursor warm light) ----- */
 @layer base {
-  :root,
-  .dark {
-    /* Spec color tokens */
-    --bg: #0f1420;
-    --surface: #171e2e;
-    --border: #263047;
-    --text: #e6eaf2;
-    --text-muted: #9aa6bd; /* nudged lighter from #8C96AB to clear AA on --surface */
-    --primary: #4c8dc9;
-    --primary-foreground: #0f1420;
-    --positive: #4caf7a;
-    --negative: #e5645f;
-    --warning: #e0a33a;
+  :root {
+    /* Core palette. Semantic text tones are deepened from the Cursor brand
+       hues just enough to clear WCAG AA on the cream surfaces. Each solid
+       token consumes a Qoder Nudge `--site-*` variable with its Cursor value
+       as the fallback, so the design-workbench appearance controls restyle
+       the app while the default look stays exactly the Cursor theme. */
+    --bg: var(--site-bg, #f2f1ed); /* page canvas — warm off-white */
+    --surface: var(--site-surface, #f7f7f4); /* cards — lightest warm surface */
+    --surface-2: #ebeae5; /* buttons, chips, inset panels */
+    --surface-3: #e6e5e0; /* hover fills, deeper emphasis */
+    --border: var(--site-border, #dddcd6); /* warm hairline (10% ink on cream) */
+    --text: var(--site-fg, #26251e); /* warm near-black ink */
+    --text-muted: var(--site-muted, #67665c); /* ≈68% warm brown, AA on cream */
+    --primary: var(--site-fg, #26251e); /* dark actions + main chart series */
+    --primary-foreground: var(--site-on-accent, #f7f6f2);
+    --brand: var(--site-accent, #f54e00); /* Cursor orange — icons, dots, focus, brand moments */
+    --positive: #187a59; /* muted teal-green, AA */
+    --negative: #c22448; /* warm crimson, AA */
+    --warning: #8f6410; /* deep gold, AA */
 
     /* Chart helpers */
-    --chart-bar: rgba(76, 141, 201, 0.7);
+    --chart-bar: rgba(38, 37, 30, 0.16);
 
-    /* Categorical series palette: hues separated well enough for multi-series
-       charts (teal / violet / rose / sky sit between the semantic blue, amber,
-       green, red). Semantic charts (heatmap, football field) keep using the
-       meaning-carrying positive/negative/warning tokens instead. */
-    --chart-2: #56b8a8;
-    --chart-3: #a78bda;
-    --chart-4: #e88fb4;
-    --chart-5: #7dc4e8;
+    /* Categorical series palette: seven hues separable on cream by hue AND
+       luminance (ink, orange, soft blue, gold, lavender, green, crimson).
+       Semantic charts (heatmap, football field) keep the meaning-carrying
+       positive/negative/warning tokens instead. */
+    --chart-2: #f54e00;
+    --chart-3: #6a8fbf;
+    --chart-4: #8a6fb8;
+    --chart-5: #cf2d56;
 
-    /* shadcn/ui semantic aliases mapped onto the spec tokens */
+    /* shadcn/ui semantic aliases mapped onto the palette */
     --background: var(--bg);
     --foreground: var(--text);
     --card: var(--surface);
     --card-foreground: var(--text);
-    --popover: #1b2334;
+    --popover: #fbfaf7;
     --popover-foreground: var(--text);
-    --secondary: #202a3d;
+    --secondary: var(--surface-2);
     --secondary-foreground: var(--text);
-    --muted: #1b2334;
+    --muted: var(--surface-2);
     --muted-foreground: var(--text-muted);
-    --accent: #263047;
+    --accent: var(--surface-3);
     --accent-foreground: var(--text);
     --destructive: var(--negative);
-    --destructive-foreground: #0f1420;
-    --input: #263047;
-    --ring: #4c8dc9;
+    --destructive-foreground: #f7f6f2;
+    --input: var(--site-border, #dddcd6);
+    --ring: var(--site-accent, #f54e00);
 
-    /* Channel triplets (R G B) so Tailwind opacity modifiers such as
-       bg-primary/10 and border-positive/40 can compose alpha. The hex tokens
-       above are kept for direct var() consumers (ECharts colors, box-shadows,
-       focus ring) which need a ready-to-use color string, not channels. */
-    --bg-rgb: 15 20 32;
-    --surface-rgb: 23 30 46;
-    --border-rgb: 38 48 71;
-    --text-rgb: 230 234 242;
-    --text-muted-rgb: 154 166 189;
-    --primary-rgb: 76 141 201;
-    --primary-foreground-rgb: 15 20 32;
-    --positive-rgb: 76 175 122;
-    --negative-rgb: 229 100 95;
-    --warning-rgb: 224 163 58;
+    --radius: var(--site-radius, 10px);
 
-    --background-rgb: var(--bg-rgb);
-    --foreground-rgb: var(--text-rgb);
-    --card-rgb: var(--surface-rgb);
-    --card-foreground-rgb: var(--text-rgb);
-    --popover-rgb: 27 35 52;
-    --popover-foreground-rgb: var(--text-rgb);
-    --secondary-rgb: 32 42 61;
-    --secondary-foreground-rgb: var(--text-rgb);
-    --muted-rgb: 27 35 52;
-    --muted-foreground-rgb: var(--text-muted-rgb);
-    --accent-rgb: 38 48 71;
-    --accent-foreground-rgb: var(--text-rgb);
-    --destructive-rgb: var(--negative-rgb);
-    --destructive-foreground-rgb: 15 20 32;
-    --input-rgb: 38 48 71;
-    --ring-rgb: 76 141 201;
-
-    --radius: 12px;
+    /* Diffused atmospheric elevation (Cursor: large blur, low opacity). */
+    --shadow-ambient: rgba(38, 37, 30, 0.03) 0px 0px 16px, rgba(38, 37, 30, 0.02) 0px 0px 8px;
+    --shadow-elevated:
+      rgba(38, 37, 30, 0.12) 0px 28px 70px, rgba(38, 37, 30, 0.08) 0px 14px 32px,
+      rgba(38, 37, 30, 0.1) 0px 0px 0px 1px;
   }
 
   html {
@@ -94,28 +75,36 @@
 
   body {
     @apply bg-background text-foreground font-sans text-body antialiased;
+    font-family: var(--site-font, "Vazirmatn", "JetBrains Mono Variable", ui-sans-serif, sans-serif);
     margin: 0;
     min-height: 100vh;
   }
 
-  /* Headings use the same Vazirmatn family, heavier weights */
+  /* Headings: Vazirmatn, hierarchy by size/weight. Persian is a connected
+     script — no negative letter-spacing (it would break letter joining).
+     Sizes scale with the Nudge typography multiplier (default 1). */
   h1 {
-    @apply text-[30px] font-bold leading-tight;
+    @apply font-bold leading-tight;
+    font-size: calc(28px * var(--site-type, 1));
   }
   h2 {
-    @apply text-[24px] font-semibold;
+    @apply font-semibold;
+    font-size: calc(22px * var(--site-type, 1));
   }
   h3 {
-    @apply text-[20px] font-semibold;
+    @apply font-semibold;
+    font-size: calc(18px * var(--site-type, 1));
   }
   h4 {
-    @apply text-[17px] font-semibold;
+    @apply font-semibold;
+    font-size: calc(16px * var(--site-type, 1));
   }
 
-  /* Visible focus ring for full keyboard navigation (accessibility) */
+  /* Warm, visible focus ring for full keyboard navigation */
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
   /* Respect reduced motion; keep transitions short */
@@ -128,12 +117,11 @@
     }
   }
 
-  /* Scrollbars in the app's own visual language: thin, token-colored thumb,
-     invisible track — the browser default gray reads as a foreign object on
-     the dark surfaces. */
+  /* Scrollbars in the app's own visual language: thin warm thumb on a
+     transparent track, hover deepens — never the browser default gray. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(var(--border-rgb)) transparent;
+    scrollbar-color: color-mix(in srgb, var(--text) 22%, transparent) transparent;
   }
   ::-webkit-scrollbar {
     width: 10px;
@@ -143,53 +131,92 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgb(var(--border-rgb));
+    background: color-mix(in srgb, var(--text) 18%, transparent);
     border-radius: 8px;
     border: 2px solid var(--bg);
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--text-muted-rgb) / 0.55);
+    background: color-mix(in srgb, var(--text) 32%, transparent);
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
   }
 }
 
-/* Dashboard chrome: flat surfaces with 1px borders — no gradients, blur or elevation shadows. */
+/* ----- Workspace chrome (Mercator-style shell, Cursor surfaces) ----- */
 @layer components {
   .app-header {
-    background: var(--surface);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
   }
 
   .app-sidebar {
-    background: var(--surface);
+    background: var(--surface-2);
   }
 
-  .brand-mark,
+  /* Brand mark: dark warm square with cream glyph (the sample's logo tile). */
+  .brand-mark {
+    color: var(--primary-foreground);
+    background: var(--primary);
+    border: 1px solid var(--primary);
+  }
+
   .tool-icon,
   .step-number {
-    color: var(--primary);
-    background: rgb(var(--primary-rgb) / 0.12);
-    border: 1px solid rgb(var(--primary-rgb) / 0.28);
+    color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
   }
 
+  /* Active nav pill: deeper warm fill + ink text; the orange dot is rendered
+     by the component, never color alone. */
   .sidebar-active {
-    box-shadow: inset -3px 0 0 var(--primary);
+    background: var(--surface-3);
+    color: var(--text);
+    font-weight: 600;
   }
 
   .dashboard-home {
-    max-width: 1600px;
+    max-width: 1440px;
     margin-inline: auto;
   }
 
-  .tool-link {
-    background: var(--bg);
+  /* Main scroll region padding scales with the Nudge spacing multiplier;
+     the breakpoints mirror the former p-4 / sm:p-6 / xl:p-8 utilities so the
+     default (multiplier 1) spacing is unchanged. */
+  .workspace-main {
+    padding: calc(16px * var(--site-space, 1));
+  }
+  @media (min-width: 640px) {
+    .workspace-main {
+      padding: calc(24px * var(--site-space, 1));
+    }
+  }
+  @media (min-width: 1280px) {
+    .workspace-main {
+      padding: calc(32px * var(--site-space, 1));
+    }
   }
 
-  /* One short, calm entrance per page — motion that acknowledges navigation
-     without theatrics (reduced-motion users get none, see base layer). */
+  .tool-link {
+    background: var(--surface);
+  }
+
+  /* Metric card: lightest surface, hairline warm border, ambient lift. */
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-ambient);
+    transition: box-shadow calc(200ms * var(--site-motion, 1)) ease;
+  }
+  .metric-card:hover {
+    box-shadow: rgba(38, 37, 30, 0.06) 0px 8px 24px, rgba(38, 37, 30, 0.1) 0px 0px 0px 1px;
+  }
+
+  /* One short, calm entrance per page; duration scales with Nudge motion. */
   .page-enter {
-    animation: page-enter 180ms ease-out;
+    animation: page-enter calc(180ms * var(--site-motion, 1)) ease-out;
   }
   @keyframes page-enter {
     from {
@@ -233,8 +260,8 @@
       45deg,
       transparent,
       transparent 3px,
-      var(--border) 3px,
-      var(--border) 4px
+      rgba(38, 37, 30, 0.14) 3px,
+      rgba(38, 37, 30, 0.14) 4px
     );
     color: var(--text-muted);
   }
@@ -242,7 +269,7 @@
   /* Loading opacity swap: keep the previous result visible */
   .is-updating {
     opacity: 0.5;
-    transition: opacity 150ms ease;
+    transition: opacity calc(150ms * var(--site-motion, 1)) ease;
   }
 
   .card-surface {

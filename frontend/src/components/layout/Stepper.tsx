@@ -22,7 +22,7 @@ export function Stepper() {
   const confirm = useConfirmDialog();
 
   return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-border bg-surface p-2">
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius)] border border-border bg-surface p-1.5 shadow-ambient">
       <ol className="flex flex-1 flex-wrap items-center gap-1">
         {WORKFLOW_STEPS.map((s, i) => {
           const done = stepComplete(completed, s.id);
@@ -35,20 +35,20 @@ export function Stepper() {
                 type="button"
                 onClick={() => navigate(s.path)}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
-                  current && "bg-accent font-semibold text-foreground",
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors hover:bg-surface-3",
+                  current && "bg-surface-3 font-semibold text-foreground",
                   done ? "text-positive" : current ? "text-foreground" : "text-muted-foreground",
                 )}
                 aria-current={current ? "step" : undefined}
               >
-                <span className="num flex h-5 w-5 items-center justify-center rounded-full border border-current text-[11px]">
+                <span className={cn("num flex h-5 w-5 items-center justify-center rounded-full border text-[11px]", done ? "border-positive/40 bg-positive/10" : "border-current")}>
                   {s.step}
                 </span>
                 <span className="hidden sm:inline">{s.label}</span>
                 <span className="sr-only">{done ? " — کامل شده" : " — شروع نشده"}</span>
                 {done ? <Check className="h-3.5 w-3.5" /> : <CircleDashed className="h-3.5 w-3.5" />}
               </button>
-              {i < WORKFLOW_STEPS.length - 1 && <span className="mx-1 text-border">←</span>}
+              {i < WORKFLOW_STEPS.length - 1 && <span className="mx-0.5 text-muted-foreground/50" aria-hidden>←</span>}
             </li>
           );
         })}

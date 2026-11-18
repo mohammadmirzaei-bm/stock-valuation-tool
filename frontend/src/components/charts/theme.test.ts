@@ -28,11 +28,12 @@ describe("chart theme — unified axis, legend, tooltip and bar styling", () => 
     expect(axisLabelStyle()).toMatchObject({ fontSize: 12 });
   });
 
-  it("builds a card-style tooltip: 1px border, rounded, flat (no shadow)", () => {
+  it("builds a card-style tooltip: 1px border, rounded, diffused ambient lift", () => {
     const t = baseOption().tooltip as any;
     expect(t.borderWidth).toBe(1);
     expect(t.borderRadius).toBe(10);
-    expect(t.extraCssText).toContain("box-shadow:none");
+    expect(t.extraCssText).toContain("box-shadow:rgba(38,37,30");
+    expect(t.extraCssText).not.toContain("box-shadow:none");
   });
 
   it("caps bar ends, flipping the rounded corners for horizontal bars", () => {

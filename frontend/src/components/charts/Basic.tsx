@@ -160,7 +160,8 @@ export function Donut({
           type: "pie",
           radius: ["45%", "70%"],
           avoidLabelOverlap: true,
-          label: { color: c.text, formatter: (p: any) => `${p.name}\n${fmt.number(p.percent)}%` },
+          label: { color: c.text, formatter: (p: any) => `${fmt.number(p.percent)}%` },
+          labelLine: { length: 10, length2: 6, lineStyle: { color: c.border } },
           data: data.map((d, i) => ({
             name: d.name,
             value: d.value,

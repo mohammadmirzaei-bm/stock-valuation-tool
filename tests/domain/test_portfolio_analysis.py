@@ -209,6 +209,53 @@ class TestLeverageClip(unittest.TestCase):
         self.assertEqual(str(caught.exception), "نتیجه محاسبه نامعتبر است")
 
 
+class TestCalLeverageRange(unittest.TestCase):
+    """پاره‌خط تخصیص باید همه وزن‌های مجاز تا سقف اهرم را بپوشاند"""
+
+    def test_cal_covers_optimal_weight_above_multiplier(self):
+        # A = 25/24 ⇒ y* = 2.8125 × 24/25 = 2.7 با سقف اهرم ۳؛
+        # نقطه سبد کامل نباید از انتهای خط بیرون بزند.
+        result = _analysis(risk_aversion=25 / 24, max_leverage=3.0)
+        complete = result.complete_portfolio
+        self.assertAlmostEqual(complete.tangency_weight, 2.7, places=12)
+        self.assertFalse(complete.leverage_capped)
+        line = result.capital_allocation_line
+        self.assertAlmostEqual(
+            line.points[1].volatility, 3.0 * result.tangency.volatility, places=12
+        )
+        self.assertGreaterEqual(line.points[1].volatility, complete.volatility)
+        self.assertAlmostEqual(
+            line.points[1].expected_return,
+            RF + line.slope * line.points[1].volatility,
+            places=12,
+        )
+
+    def test_cal_ends_at_capped_weight(self):
+        # A = 0.01 ⇒ y* خام ۲۸۱٫۲۵ به سقف ۳ بریده می‌شود؛
+        # انتهای خط باید دقیقاً نقطه سبد کامل باشد.
+        result = _analysis(risk_aversion=0.01, max_leverage=3.0)
+        complete = result.complete_portfolio
+        self.assertTrue(complete.leverage_capped)
+        self.assertEqual(complete.tangency_weight, 3.0)
+        line = result.capital_allocation_line
+        self.assertAlmostEqual(
+            line.points[1].volatility, complete.volatility, places=12
+        )
+        self.assertAlmostEqual(
+            line.points[1].expected_return, complete.expected_return, places=12
+        )
+
+    def test_cal_keeps_multiplier_floor_below_two(self):
+        # سقف اهرم کوچک‌تر از مضرب ۲ انتهای خط را کوتاه نمی‌کند
+        result = _analysis(max_leverage=0.5)
+        line = result.capital_allocation_line
+        self.assertAlmostEqual(
+            line.points[1].volatility,
+            CAL_VOLATILITY_MULTIPLIER * result.tangency.volatility,
+            places=12,
+        )
+
+
 class TestValidationAndInvariants(unittest.TestCase):
     """نام‌ها، کران پارامترها، قطعیت و تغییرناپذیری"""
 

@@ -1,7 +1,7 @@
 /**
- * Shared ECharts theming: reads the dark tokens from CSS variables so charts
- * stay consistent with the app and a theme swap is a variable change. Also
- * centralizes the axis / tooltip styling reused by every chart.
+ * Shared ECharts theming: reads the warm Cursor tokens from CSS variables so
+ * charts stay consistent with the app and a theme swap is a variable change.
+ * Also centralizes the axis / tooltip styling reused by every chart.
  */
 
 import type { EChartsOption } from "echarts";
@@ -36,24 +36,25 @@ export interface ChartColors {
 
 export function chartColors(): ChartColors {
   return {
-    text: cssVar("--text", "#E6EAF2"),
-    muted: cssVar("--text-muted", "#9AA6BD"),
-    border: cssVar("--border", "#263047"),
-    surface: cssVar("--surface", "#171E2E"),
-    primary: cssVar("--primary", "#4C8DC9"),
-    positive: cssVar("--positive", "#4CAF7A"),
-    negative: cssVar("--negative", "#E5645F"),
-    warning: cssVar("--warning", "#E0A33A"),
+    text: cssVar("--text", "#26251E"),
+    muted: cssVar("--text-muted", "#67665C"),
+    border: cssVar("--border", "rgba(38, 37, 30, 0.1)"),
+    surface: cssVar("--popover", "#FBFAF7"),
+    primary: cssVar("--primary", "#26251E"),
+    positive: cssVar("--positive", "#187A59"),
+    negative: cssVar("--negative", "#C22448"),
+    warning: cssVar("--warning", "#8F6410"),
   };
 }
 
-/** Base option merged into every chart: transparent bg, dark text, RTL-friendly. */
+/** Base option merged into every chart: transparent bg, warm ink, RTL-friendly. */
 export function baseOption(c = chartColors()): EChartsOption {
   return {
     backgroundColor: "transparent",
     textStyle: { color: c.text, fontFamily: "JetBrains Mono Variable, Vazirmatn, sans-serif" },
     grid: { left: 8, right: 16, top: 28, bottom: 8, containLabel: true },
-    // Tooltip matches the card style: flat surface, 1px border, rounded, no shadow.
+    // Tooltip matches the card style: light warm surface, hairline border,
+    // diffused ambient lift (Cursor elevation, not a hard drop shadow).
     tooltip: {
       backgroundColor: c.surface,
       borderColor: c.border,
@@ -61,7 +62,7 @@ export function baseOption(c = chartColors()): EChartsOption {
       borderRadius: 10,
       padding: [8, 12],
       textStyle: { color: c.text, fontSize: 12 },
-      extraCssText: "box-shadow:none;",
+      extraCssText: "box-shadow:rgba(38,37,30,0.10) 0px 12px 32px, rgba(38,37,30,0.06) 0px 4px 12px;",
     },
   };
 }
@@ -97,19 +98,19 @@ export function barRadius(horizontal = false): number[] {
 
 /**
  * Categorical palette for multi-series charts: seven hues that stay separable
- * on the dark surface (blue, teal, violet, amber, rose, green, sky). Semantic
- * encodings (heatmap above/below base, football-field market position) keep
- * using the meaning-carrying tokens directly — this palette is only for
- * "series identity" colors.
+ * on the cream surface by hue and luminance (ink, orange, soft blue, gold,
+ * lavender, green, crimson). Semantic encodings (heatmap above/below base,
+ * football-field market position) keep using the meaning-carrying tokens
+ * directly — this palette is only for "series identity" colors.
  */
 export function seriesPalette(c = chartColors()): string[] {
   return [
     c.primary,
-    cssVar("--chart-2", "#56B8A8"),
-    cssVar("--chart-3", "#A78BDA"),
+    cssVar("--chart-2", "#F54E00"),
+    cssVar("--chart-3", "#6A8FBF"),
     c.warning,
-    cssVar("--chart-4", "#E88FB4"),
+    cssVar("--chart-4", "#8A6FB8"),
     c.positive,
-    cssVar("--chart-5", "#7DC4E8"),
+    cssVar("--chart-5", "#CF2D56"),
   ];
 }

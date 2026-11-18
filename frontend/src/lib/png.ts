@@ -13,7 +13,7 @@ export interface DataUrlProvider {
 export function exportChartPng(
   chart: DataUrlProvider,
   filename: string,
-  backgroundColor = "#171E2E",
+  backgroundColor = "#f7f7f4",
 ): void {
   const url = chart.getDataURL({ backgroundColor, pixelRatio: 2 });
   triggerDownload(url, filename);

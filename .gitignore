@@ -22,3 +22,9 @@ mutants/
 
 # Personal progress log, kept local only
 Achievements.md
+
+# Local snapshot of the pre-refactor frontend, never committed
+frontend.old-*/
+
+# Qoder design-workspace descriptor (IDE artifact, kept local only)
+*.qoder.site

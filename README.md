@@ -1,18 +1,14 @@
 # stock-valuation-tool
 
-ابزار ارزیابی سهام بر اساس کتاب مدیریت مالی استفان راس.
+ابزار ارزیابی سهام بر اساس کتاب مدیریت مالی استفان راس — یک برنامه تمام‌پشته:
 
-منطق محاسباتی در لایه دامنه خالص (`stock_valuation/domain/`) زندگی می‌کند و
-تنها از یک مسیر در دسترس است:
-
-- **سرویس FastAPI** (`stock_valuation/api/`) — قرارداد JSON برای فرانت‌اند React
-
-رابط Streamlit نسخه اول (`stock_cla_developed.py` و `stock_valuation/ui/`) از
-مخزن حذف شده و دارایی‌های ظاهری آن در `frontend/` برای پروژه React نگه داشته
-می‌شوند.
+- **فرانت‌اند React/TypeScript** (`frontend/`) — اپ Vite با رابط فارسی RTL و تم روشن گرم
+- **سرویس FastAPI** (`stock_valuation/api/`) — قرارداد JSON برای فرانت‌اند
+- **لایه دامنه خالص** (`stock_valuation/domain/`) — تنها منبع حقیقت همه فرمول‌ها
 
 سرویس API همان توابع خالص لایه دامنه را صدا می‌زند و هیچ فرمولی در لایه HTTP
-دوباره پیاده‌سازی نمی‌شود.
+دوباره پیاده‌سازی نمی‌شود؛ فرانت‌اند هم هیچ محاسبه مالی انجام نمی‌دهد و فقط
+خروجی آمادهٔ API را نمایش می‌دهد. رابط Streamlit نسخه اول از مخزن حذف شده است.
 
 ## مدل‌های پشتیبانی‌شده
 
@@ -33,34 +29,48 @@
 | حساسیت DCF | ماتریس ارزش هر سهم و EV برای شبکه WACC × رشد پایانی | `dcf_sensitivity` | `dcf_analysis` |
 | DCF معکوس | رشد پایانی تلویحی قیمت بازار (نصف‌سازی بازه) | `reverse_dcf_implied_growth` | `dcf_analysis` |
 | سناریوهای وزنی DCF | `E[V] = Σ pᵢVᵢ` و انحراف معیار وزنی | `dcf_scenario_valuation` | `dcf_analysis` |
+| پیش‌بینی مبتنی بر محرک‌ها | ساخت سطرهای FCFF از محرک‌های رشد، حاشیه و نسبت‌ها | `build_projections` | `forecast` |
+| ضریب همتایان | آماره ضرایب همتا و ارزش تلویحی (چارک‌ها، میانه، میانگین) | `implied_valuation` | `multiples` |
+| زمین فوتبال | خلاصه بازه‌های ارزش روش‌های مختلف در یک نگاه | `football_field_summary` | `football_field` |
+| آماره سبد | میانگین، نوسان و کوواریانس سالانه از سری قیمت/بازده | `statistics_from_prices` | `portfolio_stats` |
+| بهینه‌سازی سبد | حداقل واریانس، مماس، مرز کارا و خط تخصیص سرمایه | `analyze_portfolio` | `portfolio_analysis` |
 
-توابع کمکی مثل `calculate_fcff` هم در همان ماژول موضوعی قرار دارند.
+توابع کمکی مثل `calculate_fcff` هم در همان ماژول موضوعی قرار دارند. پل ارزش
+بنگاه به حقوق صاحبان سهام (`Equity = EV + cash − debt − …`) تنها در
+`bridge.enterprise_to_equity` پیاده‌سازی شده و `dcf` و `multiples` هر دو از
+همان استفاده می‌کنند.
 
 برای هر مدل، توابع تجزیه (`single_period_decomposition`، `gordon_breakdown`،
 `expected_return_breakdown`، `capm_breakdown`، `growth_opportunities_breakdown`،
 `supernormal_schedule` در `equity` و `wacc_breakdown` در `cost_of_capital`)
 اجزای ارزش و بازده را برمی‌گردانند تا فرانت‌اند React هیچ محاسبه‌ای انجام ندهد.
 
-> مدل‌های WACC، DCF، حساسیت DCF، DCF معکوس، سناریوهای وزنی DCF و رشد پایدار
-> فقط در لایه دامنه و endpointهای FastAPI در دسترس‌اند؛ رابط گرافیکی برای
-> آن‌ها در این مخزن پیاده‌سازی نشده است.
+همه مدل‌ها هم endpoint FastAPI دارند و هم صفحه React (بخش «فرانت‌اند React»).
 
 ## ساختار پروژه
 
 ```
 stock-env/
 ├── stock_valuation/
-│   ├── domain/                   # لایه دامنه — منطق خالص، بدون import وب
+│   ├── domain/                   # لایه دامنه — منطق خالص، فقط کتابخانه استاندارد
 │   │   ├── errors.py             # ValidationError و CalculationError
-│   │   ├── validators.py         # اعتبارسنجی ورودی‌ها، MIN_SPREAD، require_finite_number
+│   │   ├── validators.py         # اعتبارسنجی ورودی‌ها، MIN_SPREAD، PSD کوواریانس
+│   │   ├── _linalg.py            # جبر خطی خصوصی روی فهرست‌ها (بدون numpy/scipy)
+│   │   ├── bridge.py             # پل EV → حقوق صاحبان سهام (منبع یکتا)
 │   │   ├── equity.py             # سهام عادی: DDM، CAPM، NPVGO، رشد پایدار، PEG
 │   │   ├── cost_of_capital.py    # WACC و تجزیه آن
-│   │   ├── dcf.py                # FCFF و ارزش‌گذاری DCF بر پایه آن
-│   │   ├── dcf_analysis.py       # سناریوها، ماتریس حساسیت، DCF معکوس (وابسته به dcf)
-│   │   ├── valuation_models.py   # نمای سازگاری عقب‌رو؛ منطق ندارد، فقط دوباره‌صادر می‌کند
+│   │   ├── dcf.py                # FCFF و ارزش‌گذاری DCF
+│   │   ├── dcf_analysis.py       # سناریوها، ماتریس حساسیت، DCF معکوس
+│   │   ├── forecast.py           # پیش‌بینی مبتنی بر محرک‌ها (وابسته به dcf)
+│   │   ├── multiples.py          # ارزش‌گذاری نسبی با ضریب همتایان
+│   │   ├── football_field.py     # خلاصه بازه‌های ارزش (وابسته به dcf_analysis و multiples)
+│   │   ├── portfolio.py          # بهینه‌سازی میانگین–واریانس و مرز کارا
+│   │   ├── portfolio_analysis.py # تحلیل سبد: دارایی‌ها، CAL، سبد کامل
+│   │   ├── portfolio_stats.py    # آماره نمونه‌ای بازده و کوواریانس
+│   │   ├── valuation_models.py   # نمای سازگاری عقب‌رو؛ فقط دوباره‌صادر می‌کند
 │   │   └── self_tests.py         # تست‌های دودی قابل اجرا از پوسته
 │   └── api/                      # سرویس FastAPI
-│       ├── main.py               # اپ، CORS، GET /health، ثبت exception handler
+│       ├── main.py               # اپ، CORS، GET /health، exception handlerها
 │       ├── errors.py             # ترجمه خطاهای دامنه به HTTP 400
 │       ├── routes/               # نقاط پایانی، بر اساس موضوع
 │       │   ├── __init__.py       # router مشترک با پیشوند /api/valuation
@@ -68,74 +78,97 @@ stock-env/
 │       │   ├── capital.py        # /wacc
 │       │   ├── dcf.py            # /dcf
 │       │   ├── dcf_analysis.py   # /dcf-scenarios، /dcf-sensitivity، /reverse-dcf
+│       │   ├── forecast.py       # /forecast
+│       │   ├── multiples.py      # /multiples
+│       │   ├── football_field.py # /football-field
+│       │   ├── portfolio.py      # /statistics و /optimize (پیشوند /api/portfolio)
 │       │   └── _common.py        # تبدیل سطرهای پیش‌بینی درخواست به نمونه‌های دامنه
-│       └── schemas/              # مدل‌های Pydantic درخواست و پاسخ
-│           ├── __init__.py       # دوباره‌صادر کردن همه نام‌ها برای `schemas as s`
-│           ├── common.py         # _Base، _RequestBase و بدنه خطا
-│           ├── equity.py
-│           ├── capital.py
-│           ├── dcf.py
-│           └── dcf_analysis.py
+│       └── schemas/              # مدل‌های Pydantic درخواست و پاسخ (هم‌نام روت‌ها)
 ├── tests/
-│   └── domain/                   # تست‌های لایه دامنه (بدون فریم‌ورک وب)
-│       ├── _fixtures.py          # پیش‌بینی پنج‌ساله مرجع DCF
-│       ├── test_equity.py
-│       ├── test_cost_of_capital.py
-│       ├── test_dcf.py
-│       ├── test_dcf_analysis.py
-│       ├── test_layering.py      # نگهبان مرز لایه دامنه
-│       └── test_self_tests.py
+│   ├── domain/                   # ۴۷۹ تست لایه دامنه (بدون فریم‌ورک وب)
+│   └── api/                      # ۱۹ تست نگاشت مسیرهای forecast/multiples/football-field/portfolio
+├── frontend/                     # اپ React + Vite + TypeScript
+│   ├── src/
+│   │   ├── api/                  # openapi.json و schema.d.ts تولیدشده از بک‌اند
+│   │   ├── pages/                # workflow/، equity/، portfolio/ و HomePage
+│   │   ├── components/           # charts/ (ECharts)، model/، layout/، common/، ui/
+│   │   ├── hooks/                # useValuation، useAutoQuery، usePersistentState و …
+│   │   ├── lib/                  # api، format، units، validation، parsePrices و …
+│   │   ├── store/                # Zustand: workflow، portfolio، settings
+│   │   └── config/               # fields.ts و models.ts (تعریف فرم‌ها و مسیرها)
+│   ├── e2e/workflow.e2e.ts       # تست end-to-end پلی‌رایت جریان هدایت‌شده
+│   ├── scripts/gen_openapi.py    # خروجی گرفتن OpenAPI از اپ FastAPI
+│   ├── package.json              # اسکریپت‌های dev/build/test/gen:api
+│   ├── playwright.config.ts      # وب‌سرورهای خودکار بک‌اند و Vite برای e2e
+│   ├── vite.config.ts            # پورت 5173، alias @، پیکربندی vitest
+│   └── tailwind.config.js        # توکن‌های تم روشن گرم، فونت وزیرمتن، پالت نمودار
+├── samples/                      # داده نمونه قطعی جریان سبد (CSV + README)
 ├── docs/
-│   └── dcf_design.md             # قرارداد طراحی DCF/WACC
-├── frontend/                     # دارایی‌های ظاهری برای فرانت‌اند React
-│   ├── tailwind.config.js        # رنگ‌ها، فونت، شعاع و پالت نمودارها
-│   └── src/index.css             # RTL، فونت وزیرمتن و متغیرهای CSS
+│   ├── architecture_map.md       # نقشه Mermaid لایه‌ها و وابستگی‌ها
+│   ├── dcf_design.md             # قرارداد طراحی DCF/WACC
+│   └── mutation_testing_report.md # گزارش کمپین‌های تست جهش
+├── mutants/                      # کش نتایج mutmut (خارج از تصویر داکر)
 ├── requirements-api.txt          # وابستگی‌های اجرای سرویس (fastapi، pydantic، uvicorn)
 ├── requirements.txt              # fastapi و pydantic برای ابزارهای محلی
-├── Dockerfile
+├── requirements-dev.txt          # mutmut 3 برای تست جهش
+├── setup.cfg                     # پیکربندی [mutmut]
+├── Dockerfile                    # تصویر فقط بک‌اند
 └── README.md
 ```
 
 ## نصب و اجرا
 
-پیش‌نیاز: پایتون ۳.۱۰ یا جدیدتر (تصویر داکر این مخزن `python:3.11-slim` است).
+پیش‌نیازها:
+
+- پایتون ۳.۱۱ یا جدیدتر (تصویر داکر `python:3.11-slim` است)
+- Node.js ۲۰ یا جدیدتر برای فرانت‌اند (Vite با ۱۸ هم کار می‌کند، ولی Playwright نسخه ۲۰ به بالا می‌خواهد)
+
+### بک‌اند (FastAPI)
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### اجرای سرویس API
-
-`requirements-api.txt` سه بسته لازم برای اجرای سرویس را فهرست می‌کند
-(`fastapi`، `pydantic`، `uvicorn`):
-
-```bash
 pip install -r requirements-api.txt
-uvicorn stock_valuation.api.main:app --reload
+uvicorn stock_valuation.api.main:app --reload --port 8000
 ```
 
 سرویس روی `http://127.0.0.1:8000` بالا می‌آید و مستندات تعاملی OpenAPI در
-`/docs` در دسترس است.
+`/docs` در دسترس است. `requirements-api.txt` سه بسته لازم برای اجرای سرویس را
+فهرست می‌کند (`fastapi`، `pydantic`، `uvicorn`).
 
 `requirements.txt` فقط `fastapi` و `pydantic` را دارد و برای ابزارهای محلی
-(مثلاً import کردن اسکیموها بدون اجرای سرویس) نگه داشته شده است؛ برای بالا
+(مثل تولید اسکیمای OpenAPI بدون اجرای سرویس) نگه داشته شده است؛ برای بالا
 آوردن سرویس همان `requirements-api.txt` را نصب کنید.
 
-برای اجرای سرویس روی پورت یا میزبان دیگر:
+### فرانت‌اند (React + Vite)
+
+در یک ترمینال جدا:
 
 ```bash
-uvicorn stock_valuation.api.main:app --host 0.0.0.0 --port 8000
+cd frontend
+npm install
+npm run dev
 ```
 
-مبداهای مجاز CORS با متغیر محیطی `ALLOWED_ORIGINS` تنظیم می‌شود (بخش CORS را
-ببینید). تست‌ها را می‌توان بدون نصب هیچ بسته‌ای اجرا کرد (بخش «اجرای تست‌ها»).
+رابط روی `http://localhost:5173` باز می‌شود. فایل `.env` لازم نیست:
+`VITE_API_BASE_URL` به‌صورت پیش‌فرض `http://127.0.0.1:8000` است و CORS بک‌اند
+پورت ۵۱۷۳ را مجاز می‌داند (نمونه در `frontend/.env.example`). برای بیلد تولید:
+
+```bash
+npm run build     # tsc --noEmit + vite build → frontend/dist/
+npm run preview   # سرو کردن بیلد تولید
+```
+
+**هر دو سرور باید هم‌زمان بالا باشند**؛ بدون API، رابط وضعیت «عدم دسترسی به
+سرور» را نشان می‌دهد. مبداهای مجاز CORS با متغیر محیطی `ALLOWED_ORIGINS`
+تنظیم می‌شود (بخش CORS را ببینید).
 
 ## سرویس API
 
 ### نقاط پایانی
 
-۱۸ endpoint محاسباتی در چهار ماژول روت و یک endpoint سلامت در `api/main.py`:
+۲۳ endpoint محاسباتی (۲۱ مسیر زیر `/api/valuation` و ۲ مسیر زیر
+`/api/portfolio`) به‌اضافه یک endpoint سلامت — مجموعاً ۲۴ مسیر OpenAPI:
 
 | متد | مسیر | ماژول روت | تابع دامنه |
 |---|---|---|---|
@@ -157,13 +190,19 @@ uvicorn stock_valuation.api.main:app --host 0.0.0.0 --port 8000
 | POST | `/api/valuation/dcf-scenarios` | `routes/dcf_analysis.py` | `dcf_analysis.dcf_scenario_valuation` |
 | POST | `/api/valuation/dcf-sensitivity` | `routes/dcf_analysis.py` | `dcf_analysis.dcf_sensitivity` |
 | POST | `/api/valuation/reverse-dcf` | `routes/dcf_analysis.py` | `dcf_analysis.reverse_dcf_implied_growth` |
+| POST | `/api/valuation/forecast` | `routes/forecast.py` | `forecast.build_projections` |
+| POST | `/api/valuation/multiples` | `routes/multiples.py` | `multiples.implied_valuation` |
+| POST | `/api/valuation/football-field` | `routes/football_field.py` | `football_field.football_field_summary` |
+| POST | `/api/portfolio/statistics` | `routes/portfolio.py` | `portfolio_stats.statistics_from_prices` |
+| POST | `/api/portfolio/optimize` | `routes/portfolio.py` | `portfolio_analysis.analyze_portfolio` |
 | GET | `/health` | `api/main.py` | بررسی دسترس‌پذیری سرویس |
 
-هر ماژول روت یک `APIRouter` بدون پیشوند دارد و `routes/__init__.py` همه را
-زیر یک `router` مشترک با `prefix="/api/valuation"` و برچسب `valuation` قرار
-می‌دهد؛ پس افزودن ماژول روت جدید فقط یک `include_router` در آن فایل می‌خواهد.
-اسکیمای هر endpoint در ماژول هم‌نام `schemas/` است و `schemas/__init__.py` همه
-نام‌ها را دوباره صادر می‌کند تا `from .. import schemas as s` ثابت بماند.
+هفت ماژول روت valuation یک `APIRouter` بدون پیشوند دارند و `routes/__init__.py`
+همه را زیر یک `router` مشترک با `prefix="/api/valuation"` و برچسب `valuation`
+قرار می‌دهد؛ روتر `portfolio` جداگانه در `api/main.py` با پیشوند
+`/api/portfolio` سوار می‌شود. اسکیمای هر endpoint در ماژول هم‌نام `schemas/`
+است و `schemas/__init__.py` همه نام‌ها را دوباره صادر می‌کند تا
+`from .. import schemas as s` ثابت بماند.
 
 ### قرارداد داده
 
@@ -172,7 +211,8 @@ uvicorn stock_valuation.api.main:app --host 0.0.0.0 --port 8000
   (مثل `dividend-projection` و `risk-premium`).
 - نرخ‌ها **اعشاری** وارد می‌شوند: ۱۲٪ برابر `0.12` است. دو استثنای خودتوضیح:
   نرخ رشد در `peg` (`growth_rate_percent`) و نرخ اوراق قرضه در `risk-premium`
-  (`bond_rate_percent`) که هر دو درصدی‌اند.
+  (`bond_rate_percent`) که هر دو درصدی‌اند. ورودی‌های سبد (بازده و کوواریانس)
+  سالانه و اعشاری‌اند.
 - فیلدهای `*_percent` در پاسخ آماده نمایش‌اند تا فرانت‌اند محاسبه‌ای تکرار نکند.
 
 ### ماتریس حساسیت DCF (WACC × رشد پایانی)
@@ -443,110 +483,98 @@ curl -s -X POST http://127.0.0.1:8000/api/valuation/sustainable-growth \
 Create React App روی پورت `3000` (هم `localhost` و هم `127.0.0.1`). برای محیط
 دیگر، متغیر محیطی `ALLOWED_ORIGINS` را با فهرست جداشده با کاما تنظیم کنید.
 
-## داکر
-
-```bash
-docker build -t stock-valuation-api .
-docker run --rm -p 8000:8000 stock-valuation-api
-```
-
-سرویس روی `http://127.0.0.1:8000` در دسترس است:
-
-```bash
-curl -s http://127.0.0.1:8000/health          # {"status":"ok"}
-docker ps                                     # ستون STATUS: healthy
-docker logs -f <container>                    # لاگ uvicorn بدون بافر
-```
-
-### آنچه در تصویر می‌نشیند
-
-- پایه تصویر `python:3.11-slim` است و فقط `requirements-api.txt`
-  (`fastapi`، `pydantic`، `uvicorn`) نصب می‌شود؛ هیچ وابستگی رابط گرافیکی
-  (Streamlit، pandas، Plotly) در تصویر نیست.
-- `Dockerfile` تنها `requirements-api.txt` و پوشه `stock_valuation/` را `COPY`
-  می‌کند، پس کد دامنه و API کل محتوای اجرایی تصویرند.
-- `.dockerignore` محیط‌های مجازی، کش پایتون، `.git/`، `frontend/`، `tests/`،
-  کش mutation testing (`mutants/` و `.mutmut_pkgs/`)، مستندات، `setup.cfg` و
-  فهرست وابستگی‌های محلی را از بستر بیلد حذف می‌کند تا `context` ارسالی به
-  daemon کوچک بماند؛ پوشه `mutants/` نسخه کاملی از کد دامنه و تست‌هاست و تنها
-  بیش از سی برابر محتوای واقعی تصویر حجم دارد.
-- وابستگی‌ها پیش از کد کپی می‌شوند تا تغییر سورس، لایه `pip install` را
-  بازسازی نکند.
-
-### اجرا و پیکربندی
-
-- سرویس با `uvicorn stock_valuation.api.main:app --host 0.0.0.0 --port 8000`
-  بالا می‌آید و `EXPOSE 8000` است.
-- کانتینر با کاربر غیر ریشه `appuser` (uid `10001`) اجرا می‌شود؛ این کاربر پیش
-  از `COPY` ساخته می‌شود تا فایل‌ها با مالکیت درست و بدون لایه `chown` اضافه
-  وارد تصویر شوند.
-- `PYTHONUNBUFFERED=1` لاگ‌ها را بی‌درنگ در `docker logs` می‌رساند و
-  `PYTHONDONTWRITEBYTECODE=1` نوشتن بایت‌کد در تصویر را متوقف می‌کند.
-- `HEALTHCHECK` هر ۳۰ ثانیه (با `start-period=10s` و سه تلاش) `GET /health` را
-  با `urllib` استاندارد صدا می‌زند، چون تصویر `slim` ابزار `curl` ندارد؛ هر کد
-  غیر ۲۰۰ باعث شکست healthcheck می‌شود.
-- برای فرانت‌اندی روی میزبان دیگر، `ALLOWED_ORIGINS` را با فهرست جداشده با
-  کاما بگذرید:
-
-```bash
-docker run --rm -p 8000:8000 \
-  -e ALLOWED_ORIGINS="https://app.example.com" \
-  stock-valuation-api
-```
-
 ## فرانت‌اند React
 
-پوشه `frontend/` فقط دارایی ظاهری است و `package.json` ندارد؛ محتوای آن در
-یک پروژه Vite + React + Tailwind 3 کپی می‌شود:
+اپ `frontend/` یک SPA کامل است: React 18 + TypeScript 5 + Vite 5، استایل با
+Tailwind 3 و کامپوننت‌های به سبک shadcn (Radix UI)، نمودارها با ECharts 5،
+دریافت داده با TanStack Query 5، فرم‌ها با react-hook-form + zod و وضعیت
+سراسری با Zustand. رابط فارسی و RTL با تم روشن گرم (پالت کرمی الهام‌گرفته از
+Cursor) و فونت وزیرمتن است؛ توکن‌های
+رنگ و تایپوگرافی در `tailwind.config.js` و `src/index.css` تعریف شده‌اند.
 
-- `frontend/tailwind.config.js` — رنگ‌های پایه و معنایی، فونت `Vazirmatn`، شعاع گوشه
-  ۸ پیکسل، رنگ‌های نمودار و آرایه‌های `chartCategorical` / `chartSequential`
-  برای کتابخانه‌های چارت.
-- `frontend/src/index.css` — بارگذاری وزیرمتن، متغیرهای `:root`، `direction: rtl`،
-  تراز راست، مقیاس سرصفحه‌ها و کلاس‌های کمکی `.ltr` / `.rtl`.
+### صفحه‌ها و مسیرها
 
-رنگ میله‌های نمودار در `--chart-bar` فایل `frontend/src/index.css` آبی پیش‌فرض
-Plotly (`rgba(55, 128, 191, …)`) است و با رنگ اصلی تم (`#1D4ED8`) یکسان نیست؛
-هر دو در دسترس‌اند تا انتخاب آگاهانه انجام شود. در Tailwind 4 به‌جای
-پیکربندی JS باید `@config` یا بلوک `@theme` استفاده شود.
+| مسیر | صفحه |
+|---|---|
+| `/` | خانه — ورودی جریان هدایت‌شده و مدل‌های تکی |
+| `/forecast` → `/wacc` → `/dcf` → `/analyses` → `/multiples` → `/football-field` | جریان هدایت‌شده شش‌مرحله‌ای؛ وضعیت مشترک در `store/workflow.ts` و پیش‌نیاز هر مرحله در همان store بررسی می‌شود |
+| `/analyses?tab=scenarios\|sensitivity\|reverse` | تب‌های سناریوها، ماتریس حساسیت و DCF معکوس |
+| `/equity/:id` | صفحه هر مدل سهام عادی (تک‌دوره‌ای، گوردون، رشد غیرعادی، CAPM، PEG و …) |
+| `/portfolio/statistics` | آماره سبد از قیمت‌ها (چسباندن یا بارگذاری CSV) |
+| `/portfolio/optimize` | بهینه‌ساز سبد: مرز کارا، سبد مماس، CAL و سبد کامل |
 
-> کامنت‌های بالایی `frontend/tailwind.config.js` و `frontend/src/index.css` به
-> `.streamlit/config.toml` و `stock_valuation/ui/theme.py` ارجاع می‌دهند؛ آن
-> فایل‌ها با حذف رابط Streamlit از مخزن رفته‌اند و این ارجاع‌ها فقط منشأ تاریخ
-> رنگ‌ها و تایپوگرافی را توضیح می‌دهند — دنبالشان نگردید.
+تعریف مسیرها و مراحل در `src/config/models.ts` و فیلدهای فرم‌ها در
+`src/config/fields.ts` است. هیچ محاسبه مالی در فرانت‌اند انجام نمی‌شود؛
+کتابخانه‌های `src/lib/` فقط قالب‌بندی، تبدیل واحد، اعتبارسنجی فرم و تجزیه
+CSV را بر عهده دارند. داده نمونه قطعی جریان سبد در `samples/` است
+(`samples/README.md` قالب هر فایل را توضیح می‌دهد).
+
+### اسکریپت‌های npm
+
+همه از پوشه `frontend/` اجرا می‌شوند:
+
+| فرمان | کار |
+|---|---|
+| `npm run dev` | سرور توسعه Vite روی پورت 5173 |
+| `npm run build` | بررسی نوع (`tsc --noEmit`) و بیلد تولید در `dist/` |
+| `npm run preview` | سرو کردن بیلد تولید |
+| `npm run typecheck` | فقط بررسی نوع TypeScript |
+| `npm test` | تست‌های واحد vitest (یک‌بار اجرا) |
+| `npm run test:watch` | vitest در حالت watch |
+| `npm run test:e2e` | تست‌های end-to-end پلی‌رایت |
+| `npm run gen:api` | بازتولید `src/api/openapi.json` و `src/api/schema.d.ts` از اپ FastAPI |
+
+### انواع تولیدشده از قرارداد API
+
+انواع درخواست/پاسخ TypeScript به‌صورت دستی نوشته نمی‌شوند:
+`npm run gen:api` ابتدا با `scripts/gen_openapi.py` اسکیمای OpenAPI را از خود
+اپ FastAPI می‌گیرد (فقط `fastapi` و `pydantic` لازم است، سرور در حال اجرا
+نمی‌خواهد) و سپس با `openapi-typescript` فایل `src/api/schema.d.ts` را
+می‌سازد. بعد از هر تغییر قرارداد بک‌اند این فرمان را اجرا کنید تا انواع
+فرانت‌اند هم‌گام بمانند.
 
 ## لایه‌بندی
 
 ### لایه دامنه (`stock_valuation/domain/`)
 
 توابع خالص و قطعی؛ ورودی را صریح می‌گیرند و خروجی را برمی‌گردانند، بدون
-خواندن یا نوشتن وضعیت سراسری و بدون import هیچ فریم‌ورک وبی. هر ماژول یک
-موضوع است:
+خواندن یا نوشتن وضعیت سراسری، بدون import هیچ فریم‌ورک وبی و فقط با کتابخانه
+استاندارد (بدون numpy/scipy). هر ماژول یک موضوع است و جهت import یک DAG
+سخت‌گیرانه را دنبال می‌کند:
 
 | ماژول | نقش | به چه تکیه می‌کند |
 |---|---|---|
 | `errors.py` | `ValidationError` و `CalculationError` | وابستگی ندارد |
-| `validators.py` | اعتبارسنج‌های مشترک، `MIN_SPREAD`، `require_finite_number` | `errors` |
+| `validators.py` | اعتبارسنج‌های مشترک، `MIN_SPREAD`، `require_finite_number`، PSD کوواریانس | `errors` |
+| `_linalg.py` | جبر خطی خصوصی (حل دستگاه، ضرب ماتریس) برای سبد | `errors`، `validators` |
+| `bridge.py` | پل `enterprise_to_equity` — منبع یکتای فرمول | `errors`، `validators` |
 | `equity.py` | مدل‌های سود تقسیمی، CAPM، NPVGO، رشد پایدار، PEG | `errors`، `validators` |
 | `cost_of_capital.py` | `wacc` و `wacc_breakdown` | `errors`، `validators` |
-| `dcf.py` | `calculate_fcff`، `CashFlowProjection`، `dcf_valuation` | `errors`، `validators` |
+| `dcf.py` | `calculate_fcff`، `CashFlowProjection`، `dcf_valuation` | `bridge`، `errors`، `validators` |
 | `dcf_analysis.py` | سناریوها، ماتریس حساسیت، DCF معکوس | `dcf`، `errors`، `validators` |
-| `valuation_models.py` | نمای سازگاری عقب‌رو (بدون منطق) | چهار ماژول موضوعی |
+| `forecast.py` | ساخت سطرهای پیش‌بینی از محرک‌ها | `dcf`، `errors`، `validators` |
+| `multiples.py` | آماره ضرایب همتا و ارزش تلویحی | `bridge`، `errors`، `validators` |
+| `football_field.py` | خلاصه بازه‌های ارزش روش‌ها | `dcf_analysis`، `multiples`، `errors`، `validators` |
+| `portfolio.py` | حداقل واریانس، مماس، مرز کارا (فرمول بسته + شمارش تکیه‌گاه) | `_linalg`، `errors`، `validators` |
+| `portfolio_analysis.py` | تحلیل سبد: دارایی‌ها، CAL، سبد کامل | `portfolio`، `errors`، `validators` |
+| `portfolio_stats.py` | بازده از قیمت، آماره نمونه‌ای و سال‌سازی حسابی | `errors`، `validators` |
+| `valuation_models.py` | نمای سازگاری عقب‌رو (بدون منطق) | ماژول‌های موضوعی |
 | `self_tests.py` | تست‌های دودی مرجع | `valuation_models` |
 
-جهت import فقط از ماژول موضوعی به `errors`/`validators` و از `dcf_analysis` به
-`dcf` است؛ ماژول‌های `equity`، `cost_of_capital` و `dcf` مستقل‌اند و هیچ‌کدام
-لایه API را import نمی‌کنند.
+ماژول‌های بالادست هرگز از پایین‌دست import نمی‌کنند (مثلاً `dcf` هرگز
+`forecast` یا `dcf_analysis` را نمی‌شناسد) و هیچ‌کدام لایه API را import
+نمی‌کنند.
 
 ### لایه API (`stock_valuation/api/`)
 
-- `main.py`: ساخت اپ، CORS، `GET /health` و ثبت exception handlerهای سراسری.
+- `main.py`: ساخت اپ، CORS، `GET /health`، ثبت exception handlerهای سراسری و
+  سوار کردن دو روتر `/api/valuation` و `/api/portfolio`.
 - `errors.py`: ترجمه `ValidationError` / `CalculationError` به پاسخ 400 با بدنه
   `ErrorResponse`.
-- `routes/`: یک ماژول به هر موضوع (`equity`، `capital`، `dcf`، `dcf_analysis`)
-  و `_common.py` برای تبدیل سطرهای پیش‌بینی درخواست به نمونه دامنه. هر endpoint
-  دقیقاً یک تابع دامنه را صدا می‌زند و خروجی را با `model_validate` به مدل پاسخ
-  نگاشت می‌کند؛ فیلدهایی که دامنه نمی‌دهد (نمایش مجدد ورودی) همان‌جا پر می‌شوند.
+- `routes/`: یک ماژول به هر موضوع و `_common.py` برای تبدیل سطرهای پیش‌بینی
+  درخواست به نمونه دامنه. هر endpoint دقیقاً یک تابع دامنه را صدا می‌زند و
+  خروجی را با `model_validate` به مدل پاسخ نگاشت می‌کند؛ فیلدهایی که دامنه
+  نمی‌دهد (نمایش مجدد ورودی) همان‌جا پر می‌شوند.
 - `schemas/`: همان تقسیم موضوعی برای مدل‌های Pydantic؛ `common.py` پایه‌های
   `_Base` / `_RequestBase` و بدنه خطا را دارد و `__init__.py` همه نام‌ها را
   دوباره صادر می‌کند تا `from .. import schemas as s` کار کند.
@@ -554,7 +582,7 @@ Plotly (`rgba(55, 128, 191, …)`) است و با رنگ اصلی تم (`#1D4ED8
 ### نمای سازگاری عقب‌رو
 
 `stock_valuation/domain/valuation_models.py` دیگر هیچ منطقی ندارد و فقط نام‌های
-عمومی چهار ماژول موضوعی را دوباره صادر می‌کند، تا importهای قدیمی بدون تغییر
+عمومی ماژول‌های موضوعی را دوباره صادر می‌کند، تا importهای قدیمی بدون تغییر
 کار کنند. کد جدید باید مستقیماً از ماژول موضوعی خود import کند:
 
 ```python
@@ -584,10 +612,15 @@ from stock_valuation.domain.valuation_models import dcf_valuation  # فقط سا
 
 ## اجرای تست‌ها
 
-همه تست‌ها در `tests/domain/` هستند، از `unittest.TestCase` استفاده می‌کنند و
-جز کتابخانه استاندارد و خود لایه دامنه چیزی import نمی‌کنند؛ پس بدون نصب
-`fastapi` / `pydantic` / `pytest` هم اجرا می‌شوند. همه فرمان‌ها از ریشه پروژه
-اجرا می‌شوند:
+چهار لایه آزمون وجود دارد: تست واحد دامنه و API (پایتون)، تست واحد فرانت‌اند
+(vitest)، تست end-to-end (Playwright) و تست جهش (mutmut).
+
+### بک‌اند — unittest و pytest
+
+تست‌های `tests/domain/` از `unittest.TestCase` استفاده می‌کنند و جز کتابخانه
+استاندارد و خود لایه دامنه چیزی import نمی‌کنند؛ تست‌های `tests/api/` توابع
+روت را مستقیم با بدنه‌های Pydantic صدا می‌زنند (بدون سرور HTTP) و به
+`fastapi` / `pydantic` نیاز دارند. همه فرمان‌ها از ریشه پروژه اجرا می‌شوند:
 
 ```bash
 # کل مجموعه (unittest — پیش‌فرض مخزن)
@@ -599,38 +632,29 @@ python3 -m unittest tests.domain.test_dcf_analysis -v
 # یک کلاس یا یک تست
 python3 -m unittest tests.domain.test_dcf.TestFcff.test_reference_r1
 
-# در صورت نصب pytest
+# با pytest (در صورت نصب)
 python3 -m pytest tests -q
 python3 -m pytest tests/domain/test_layering.py -q
 ```
 
-هر دو اجراکننده ۱۵۷ تست را کشف می‌کنند؛ فایل تست با ماژول دامنه‌ای که می‌سنجد
-هم‌نام است:
+هر دو اجراکننده **۴۹۸ تست** را کشف می‌کنند: ۴۷۹ تست دامنه در `tests/domain/`
+و ۱۹ تست مسیر در `tests/api/` (نگاشت درخواست/پاسخ و خطاهای 400/422 برای
+`forecast`، `multiples`، `football-field` و `portfolio`). فایل تست با ماژولی
+که می‌سنجد هم‌نام است؛ `tests/domain/_fixtures.py` پیش‌بینی پنج‌ساله مرجع DCF
+را به‌صورت مشترک در اختیار آزمون‌های DCF، حساسیت و DCF معکوس می‌گذارد.
 
-| فایل | ماژول دامنه | تست |
-|---|---|---|
-| `tests/domain/test_equity.py` | `domain/equity.py` | ۶۹ |
-| `tests/domain/test_dcf_analysis.py` | `domain/dcf_analysis.py` | ۴۶ |
-| `tests/domain/test_dcf.py` | `domain/dcf.py` | ۲۷ |
-| `tests/domain/test_cost_of_capital.py` | `domain/cost_of_capital.py` | ۱۰ |
-| `tests/domain/test_layering.py` | مرز لایه دامنه | ۴ |
-| `tests/domain/test_self_tests.py` | `domain/self_tests.py` | ۱ |
-
-`tests/domain/_fixtures.py` پیش‌بینی پنج‌ساله مرجع DCF را به‌صورت مشترک در اختیار
-آزمون‌های DCF، حساسیت و DCF معکوس می‌گذارد.
-
-محتوای مجموعه: مقادیر مرجع مدل‌ها (شامل WACC و DCF)، سازگاری
-ارزش فعلی اجزا با قیمت کل، حداقل اختلاف نرخ بازده/WACC و رشد، ورودی‌های خالی
-یا ناهم‌خوان، آستانه‌های تفسیر PEG، ماتریس حساسیت DCF (سلول مرکزی، محورها،
-سلول‌های نامعتبر و پارامترهای شبکه)، رفت‌وبرگشت و حالت‌های خارج از بازه DCF
-معکوس، احتمال‌ها و آمار ریسک سناریوهای وزنی، هویت‌های NPVGO و منحنی رشد
-پایدار، قطعی‌بودن خروجی‌ها و نبود وابستگی لایه محاسباتی به فریم‌ورک‌های وب.
+محتوای مجموعه: مقادیر مرجع مدل‌ها (شامل WACC و DCF)، سازگاری ارزش فعلی اجزا
+با قیمت کل، حداقل اختلاف نرخ بازده/WACC و رشد، ورودی‌های خالی یا ناهم‌خوان،
+آستانه‌های تفسیر PEG، ماتریس حساسیت DCF (سلول مرکزی، محورها، سلول‌های نامعتبر
+و پارامترهای شبکه)، رفت‌وبرگشت و حالت‌های خارج از بازه DCF معکوس، احتمال‌ها و
+آمار ریسک سناریوهای وزنی، هویت‌های NPVGO و منحنی رشد پایدار، آماره و
+بهینه‌سازی سبد (شامل قرارداد PSD کوواریانس)، قطعی‌بودن خروجی‌ها و نبود
+وابستگی لایه محاسباتی به فریم‌ورک‌های وب.
 
 ### تست‌های دودی
 
 `domain/self_tests.py` هشت بررسی سریع (smoke) روی مدل‌های مرجع انجام می‌دهد و
-فهرست پیام‌های ✅/❌ برمی‌گرداند؛ چون رابط گرافیکی در مخزن نیست، از پوسته اجرا
-می‌شود:
+فهرست پیام‌های ✅/❌ برمی‌گرداند:
 
 ```bash
 python3 -c "from stock_valuation.domain.self_tests import run_self_tests; [print(m) for m in run_self_tests()]"
@@ -639,15 +663,113 @@ python3 -c "from stock_valuation.domain.self_tests import run_self_tests; [print
 مرجع کامل و قطعی همان مجموعه `tests/domain/` است و `test_self_tests.py` فقط
 بررسی می‌کند فهرست ۸ سطری باشد و همه با ✅ شروع شوند.
 
-لایه API در حال حاضر تست خودکار ندارد؛ صحت هر ۱۸ endpoint، قرارداد خطا و
-پاسخ 422 با فراخوانی واقعی HTTP بررسی شده است.
+### فرانت‌اند — vitest
+
+تست‌های واحد با vitest + Testing Library در محیط jsdom اجرا می‌شوند و کنار
+همان فایل‌های `src/` زندگی می‌کنند (`*.test.ts` / `*.test.tsx`): توابع
+قالب‌بندی و تبدیل واحد، تجزیه قیمت‌ها و CSV، منطق فرم‌ها و پیش‌نیازها،
+storeها و کامپوننت‌های نمودار.
+
+```bash
+cd frontend
+npm test            # vitest run — ۱۴۲ تست در ۲۵ فایل
+npm run test:watch  # حالت watch
+npm run typecheck   # tsc --noEmit
+```
+
+### End-to-end — Playwright
+
+`frontend/e2e/workflow.e2e.ts` جریان هدایت‌شده را در مرورگر واقعی Chromium
+می‌آزماید: پیش‌بینی نمونه → WACC (۹٪) → DCF (ارزش هر سهم 124.02) → تب‌های
+تحلیل‌ها → ضریب همتایان → زمین فوتبال، به‌اضافه یک سناریوی مرجع گوردون
+(22.50). پیکربندی `playwright.config.ts` خودش هر دو سرور را بالا می‌آورد
+(بک‌اند روی 8000 و Vite روی 5173) و سرورهای در حال اجرا را دوباره استفاده
+می‌کند؛ پس فقط کافی است مرورگر نصب باشد:
+
+```bash
+cd frontend
+npx playwright install chromium   # یک‌بار، دانلود مرورگر
+npm run test:e2e
+```
+
+پسوند `*.e2e.ts` عمداً با گلوب پیش‌فرض vitest فرق دارد تا دو مجموعه با هم
+قاطی نشوند. روی میزبان‌های بدون کتابخانه‌های سیستمی Chromium، ممکن است لازم
+باشد `LD_LIBRARY_PATH` را به پوشه‌ای دارای `libnspr4`/`libnss3` اشاره دهید.
+
+### تست جهش — mutmut
+
+لایه دامنه با mutmut 3 جهش داده می‌شود؛ پیکربندی `[mutmut]` در `setup.cfg`
+جهش را به `stock_valuation/domain/*` و مجموعه مرجع را به `tests/domain`
+محدود می‌کند. نصب و اجرا از ریشه پروژه:
+
+```bash
+pip install -r requirements-dev.txt   # mutmut>=3,<4 (pytest و coverage وابستگی خود آن‌اند)
+python3 -m mutmut run
+python3 -m mutmut results
+```
+
+نتایج در پوشه `mutants/` کش می‌شوند. mutmut برای ویرایش‌های فقط-تستی کش را
+باطل نمی‌کند؛ برای کمپین تازه باید `mutants/` را حذف کرد. گزارش کمپین‌ها،
+آمار جهش‌های کشته/زنده و دلیل بقای هر جهش در
+`docs/mutation_testing_report.md` ثبت شده است.
+
+## داکر
+
+```bash
+docker build -t stock-valuation-api .
+docker run --rm -p 8000:8000 stock-valuation-api
+```
+
+سرویس روی `http://127.0.0.1:8000` در دسترس است:
+
+```bash
+curl -s http://127.0.0.1:8000/health          # {"status":"ok"}
+docker ps                                     # ستون STATUS: healthy
+docker logs -f <container>                    # لاگ uvicorn بدون بافر
+```
+
+### آنچه در تصویر می‌نشیند
+
+- پایه تصویر `python:3.11-slim` است و فقط `requirements-api.txt`
+  (`fastapi`، `pydantic`، `uvicorn`) نصب می‌شود؛ هیچ وابستگی توسعه یا
+  فرانت‌اندی در تصویر نیست.
+- `Dockerfile` تنها `requirements-api.txt` و پوشه `stock_valuation/` را `COPY`
+  می‌کند، پس کد دامنه و API کل محتوای اجرایی تصویرند. فرانت‌اند React جداگانه
+  با `npm run dev` (یا بیلد استاتیک) اجرا می‌شود و به همین سرویس وصل می‌شود.
+- `.dockerignore` محیط‌های مجازی، کش پایتون، `.git/`، `frontend/`، `tests/`،
+  کش mutation testing (`mutants/` و `.mutmut_pkgs/`)، مستندات، `setup.cfg` و
+  فهرست وابستگی‌های محلی را از بستر بیلد حذف می‌کند تا `context` ارسالی به
+  daemon کوچک بماند؛ پوشه `mutants/` نسخه کاملی از کد دامنه و تست‌هاست و تنها
+  بیش از سی برابر محتوای واقعی تصویر حجم دارد.
+- وابستگی‌ها پیش از کد کپی می‌شوند تا تغییر سورس، لایه `pip install` را
+  بازسازی نکند.
+
+### اجرا و پیکربندی
+
+- سرویس با `uvicorn stock_valuation.api.main:app --host 0.0.0.0 --port 8000`
+  بالا می‌آید و `EXPOSE 8000` است.
+- کانتینر با کاربر غیر ریشه `appuser` (uid `10001`) اجرا می‌شود؛ این کاربر پیش
+  از `COPY` ساخته می‌شود تا فایل‌ها با مالکیت درست و بدون لایه `chown` اضافه
+  وارد تصویر شوند.
+- `PYTHONUNBUFFERED=1` لاگ‌ها را بی‌درنگ در `docker logs` می‌رساند و
+  `PYTHONDONTWRITEBYTECODE=1` نوشتن بایت‌کد در تصویر را متوقف می‌کند.
+- `HEALTHCHECK` هر ۳۰ ثانیه (با `start-period=10s` و سه تلاش) `GET /health` را
+  با `urllib` استاندارد صدا می‌زند، چون تصویر `slim` ابزار `curl` ندارد؛ هر کد
+  غیر ۲۰۰ باعث شکست healthcheck می‌شود.
+- برای فرانت‌اندی روی میزبان دیگر، `ALLOWED_ORIGINS` را با فهرست جداشده با
+  کاما بگذرید:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e ALLOWED_ORIGINS="https://app.example.com" \
+  stock-valuation-api
+```
 
 ## افزودن مدل جدید
 
 1. تابع محاسباتی و در صورت نیاز نوع نتیجه (dataclass منجمد یا NamedTuple) را
-   در ماژول موضوعی لایه دامنه اضافه کنید: `equity.py`، `cost_of_capital.py`،
-   `dcf.py` یا `dcf_analysis.py`. اگر موضوع تازه‌ای است، ماژول جدید بسازید؛
-   `test_layering.py` آن را خودکار کشف می‌کند. docstring بنویسید و از
+   در ماژول موضوعی لایه دامنه اضافه کنید. اگر موضوع تازه‌ای است، ماژول جدید
+   بسازید؛ `test_layering.py` آن را خودکار کشف می‌کند. docstring بنویسید و از
    `ValidationError` / `CalculationError` و اعتبارسنج‌های `validators.py`
    استفاده کنید.
 2. `domain/valuation_models.py` را با نام‌های جدید به‌روز کنید تا نمای
@@ -663,11 +785,15 @@ python3 -c "from stock_valuation.domain.self_tests import run_self_tests; [print
    لایه تکرار نکنید.
 5. تست‌ها را در `tests/domain/test_<ماژول>.py` بنویسید (مقادیر مرجع، خطاهای
    اعتبارسنجی، قطعی‌بودن خروجی) و در صورت نیاز فیکسچر مشترک را در
-   `tests/domain/_fixtures.py` اضافه کنید.
-6. جدول مدل‌ها و جدول endpointهای همین README را به‌روز کنید.
+   `tests/domain/_fixtures.py` اضافه کنید؛ برای مسیر جدید، تست نگاشت
+   درخواست/پاسخ را هم در `tests/api/` بنویسید.
+6. در فرانت‌اند، `npm run gen:api` را اجرا کنید تا انواع تولیدشده هم‌گام
+   شوند؛ سپس صفحه/فرم را با تعریف‌های `src/config/fields.ts` و
+   `src/config/models.ts` اضافه کنید.
+7. جدول مدل‌ها و جدول endpointهای همین README را به‌روز کنید.
 
->توسعه مدل‌های جدید: فرمول‌ها صرفاً در لایه دامنه و در ماژول موضوعی خود
->نگهداری می‌شوند. برای اضافه کردن هر مدل جدید، تنها به نوشتن یک تابع محاسباتی
->کاملاً ایزوله، یک طرحواره Pydantic و یک روت هدایت‌کننده نیاز دارید. این
->ساختار تضمین می‌کند که قرارداد JSON و مسیرهای API هیچ‌گاه درگیر منطق ریاضی
->تکراری نشوند.
+> توسعه مدل‌های جدید: فرمول‌ها صرفاً در لایه دامنه و در ماژول موضوعی خود
+> نگهداری می‌شوند. برای اضافه کردن هر مدل جدید، تنها به نوشتن یک تابع محاسباتی
+> کاملاً ایزوله، یک طرحواره Pydantic و یک روت هدایت‌کننده نیاز دارید. این
+> ساختار تضمین می‌کند که قرارداد JSON و مسیرهای API هیچ‌گاه درگیر منطق ریاضی
+> تکراری نشوند.

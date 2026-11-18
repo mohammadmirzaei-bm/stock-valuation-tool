@@ -11,8 +11,8 @@
 آزموده می‌شود.
 
 خط تخصیص سرمایه دو نقطه کمکی دارد: ``(بازده = rf، نوسان = ۰)`` و نقطه‌ای در
-``CAL_VOLATILITY_MULTIPLIER`` برابرِ نوسان سبد مماس. با مضرب ۲، سبد مماس
-دقیقاً وسط این پاره‌خط است.
+``max(CAL_VOLATILITY_MULTIPLIER, max_leverage)`` برابرِ نوسان سبد مماس.
+چون ``y* ≤ max_leverage`` است، سبد کامل همیشه روی این پاره‌خط می‌ماند.
 
 قرارداد خطا:
     ValidationError: ورودی نامعتبر، از جمله شکست تعریف سبد مماس
@@ -234,12 +234,19 @@ def _complete_portfolio(
     )
 
 
-def _allocation_line(tangency: PortfolioPoint, risk_free_rate: float) -> CapitalAllocationLine:
-    """دو نقطه کمکی خط تخصیص سرمایه."""
+def _allocation_line(
+    tangency: PortfolioPoint, risk_free_rate: float, max_leverage: float
+) -> CapitalAllocationLine:
+    """دو نقطه کمکی خط تخصیص سرمایه.
+
+    نقطه دوم در ``max(CAL_VOLATILITY_MULTIPLIER, max_leverage)`` برابر نوسان
+    سبد مماس است تا سبد کامل با هر ``y*`` مجاز روی پاره‌خط بماند.
+    """
     if tangency.sharpe_ratio is None:
         raise CalculationError(_INVALID_RESULT)
     slope = _finite(tangency.sharpe_ratio)
-    end_volatility = _finite(CAL_VOLATILITY_MULTIPLIER * tangency.volatility)
+    multiplier = max(CAL_VOLATILITY_MULTIPLIER, max_leverage)
+    end_volatility = _finite(multiplier * tangency.volatility)
     end_return = _finite(risk_free_rate + slope * end_volatility)
     return CapitalAllocationLine(
         risk_free_rate=float(risk_free_rate),
@@ -332,7 +339,7 @@ def analyze_portfolio(
         tangency=tangency,
         frontier=frontier,
         equal_weight=equal_weight,
-        capital_allocation_line=_allocation_line(tangency, risk_free_rate),
+        capital_allocation_line=_allocation_line(tangency, risk_free_rate, max_leverage),
         complete_portfolio=_complete_portfolio(
             tangency, risk_free_rate, risk_aversion, max_leverage
         ),
